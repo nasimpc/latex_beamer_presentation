@@ -1,0 +1,468 @@
+% Team 02 - Mid-Term Presentation: Anomaly Detection and Causal Analysis Pipeline
+% Professional German University Style LaTeX Beamer Presentation
+
+\documentclass[aspectratio=169, 11pt]{beamer}
+
+% ============================================================================
+% THEME CONFIGURATION - German University Style
+% ============================================================================
+\usetheme{Madrid}
+\usecolortheme{whale}
+
+% Custom colors inspired by German universities (e.g., TU/LMU style)
+\definecolor{uniblue}{RGB}{0, 51, 102}
+\definecolor{unigray}{RGB}{85, 85, 85}
+\definecolor{lightgray}{RGB}{240, 240, 240}
+\definecolor{accentred}{RGB}{153, 0, 0}
+
+% Apply custom colors
+\setbeamercolor{structure}{fg=uniblue}
+\setbeamercolor{frametitle}{bg=uniblue, fg=white}
+\setbeamercolor{title}{bg=uniblue, fg=white}
+\setbeamercolor{block title}{bg=uniblue, fg=white}
+\setbeamercolor{block body}{bg=lightgray, fg=black}
+\setbeamercolor{item}{fg=uniblue}
+\setbeamercolor{subitem}{fg=unigray}
+\setbeamercolor{footline}{fg=unigray}
+
+% Remove navigation symbols
+\setbeamertemplate{navigation symbols}{}
+
+% Custom footline
+\setbeamertemplate{footline}{
+  \leavevmode%
+  \hbox{%
+    \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{author in head/foot}%
+      \usebeamerfont{author in head/foot}\insertshortauthor
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,center]{title in head/foot}%
+      \usebeamerfont{title in head/foot}\insertshorttitle
+    \end{beamercolorbox}%
+    \begin{beamercolorbox}[wd=.333333\paperwidth,ht=2.25ex,dp=1ex,right]{date in head/foot}%
+      \usebeamerfont{date in head/foot}\insertshortdate{}\hspace*{2em}
+      \insertframenumber{} / \inserttotalframenumber\hspace*{2ex}
+    \end{beamercolorbox}}%
+  \vskip0pt%
+}
+
+% ============================================================================
+% PACKAGES
+% ============================================================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{hyperref}
+
+% Table column types
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+% ============================================================================
+% TITLE PAGE INFORMATION
+% ============================================================================
+\title[Anomaly Detection and Causal Analysis]{Robot Navigation Anomaly Detection and Causal Analysis}
+% \subtitle{Mid-Term Presentation -- AI Algorithms}
+\author[Team 02 Final Presentation]{Team 02 Final Presentation}
+\institute[Universität Bremen]{AI Algorithms – Theory and Engineering\\Winter Semester 2025/26}
+\date{January 27, 2026}
+
+% ============================================================================
+% DOCUMENT
+% ============================================================================
+\begin{document}
+
+% Title Slide
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+
+% Table of Contents
+\begin{frame}{Outline}
+  \tableofcontents
+\end{frame}
+
+% ============================================================================
+\section{Requirements Identified}
+% ============================================================================
+
+\begin{frame}{Requirements Identified}
+  \begin{itemize}
+    \item Metrics to quantify localization and navigation performance (For anomaly detection)
+    \item Anomaly detection (Single source and Multiple source)
+    \item Feature vectors for Anomaly Prediction
+    \item Anomaly Prediction FOL Rule Derivation
+    \item Scenario based and log based predictions
+    \item Implement as Python script (*.py) or package that includes the complete pipeline
+  \end{itemize}
+\end{frame}
+
+% ============================================================================
+\section{Data Overview and Pre-processing}
+% ============================================================================
+
+\begin{frame}{Dataset Overview}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Dataset Properties}
+        \begin{itemize}
+          \item \textbf{Total Scenarios:} 100 directories
+          \item \textbf{Runs per Scenario:} 3 (labeled 0, 1, 2)
+          \item \textbf{Total Runs:} $\sim$300 experiments
+          \item \textbf{Robot:} TurtleBot4 (0.22m diameter)
+        \end{itemize}
+      \end{block}
+      
+      \vspace{0.3cm}
+      
+      \begin{block}{Environment Types}
+        \begin{itemize}
+          \item door-width
+          \item door-size
+          \item room-size
+          \item hallway-window
+        \end{itemize}
+      \end{block}
+    \end{column}
+    
+    \begin{column}{0.48\textwidth}
+      \begin{block}{File Structure per Run}
+        \footnotesize
+        \begin{tabular}{@{}l l@{}}
+          \toprule
+          \textbf{File} & \textbf{Content} \\
+          \midrule
+          poses.csv & Robot trajectories \\
+          behaviors.csv & BT execution logs \\
+          rosbag2.csv & ROS2 bag + AMCL \\
+          scenario.config & Goals, params \\
+          run.yaml & Run metadata \\
+          \bottomrule
+        \end{tabular}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Pre-processing Steps}
+  \begin{itemize}
+    \item \textbf{Data Synchronization}: Aligns the robot's estimated position with the ``Ground Truth'' (actual capabilities) data.
+    \vspace{0.2cm}
+    \item \textbf{Stationary Filtering}: Removes irrelevant data where the robot was not moving, typically at the start or end of a run.
+    \vspace{0.2cm}
+    \item \textbf{Coordinate \& Orientation Normalization}:
+    \vspace{0.2cm}
+    \item \textbf{Yaw Normalization}: Normalizes all yaw angles to the range $[-\pi, \pi]$.
+    \vspace{0.2cm}
+    \item \textbf{Quaternion Conversion}: Converts orientation data from quaternion $(w,x,y,z)$ to yaw angles for easier error calculation.
+  \end{itemize}
+\end{frame}
+
+% ============================================================================
+\section{Performance Metrics and Features}
+% ============================================================================
+
+\begin{frame}{Performance Metrics (8 Metrics)}
+  \begin{table}
+    \footnotesize
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{@{}L{3.8cm} c L{4.5cm} L{2.2cm}@{}}
+      \toprule
+      \textbf{Metric} & \textbf{Unit} & \textbf{Description} & \textbf{Category} \\
+      \midrule
+      mean\_pos\_error & m & Average position error & Localization \\
+      rmse\_pos & m & Root mean square error (spike sensitive) & Localization \\
+      mean\_yaw\_error & rad & Average orientation error & Localization \\
+      executed\_path\_length & m & Total path traveled & Path \\
+      path\_efficiency & ratio & gt\_path / executed (1 is best) & Path \\
+      mean\_linear\_velocity & m/s & Average movement speed & Kinematics \\
+      trajectory\_smoothness & rad/s² & Angular acceleration (lower = smoother) & Kinematics \\
+      duration & s & Total run time & Kinematics \\
+      mean\_amcl\_uncertainty & m & Average localization confidence & AMCL \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+\end{frame}
+
+\begin{frame}{Features for Causal Analysis (27 Features)}
+  \begin{table}
+    \tiny
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabular}{@{}L{2.0cm} L{6.0cm} L{4.5cm}@{}}
+      \toprule
+      \textbf{Anomaly Type} & \textbf{Primary Predictors} & \textbf{Secondary Predictors} \\
+      \midrule
+      \textbf{Collision} & near\_wall, tight\_clearance, near\_static\_obstacle, clearance\_ratio & min\_wall\_distance, min\_obstacle\_distance \\
+      \textbf{Stuck} & in\_narrow\_corridor, in\_small\_room, tight\_obstacle\_clearance & corridor\_width, room\_area \\
+      \textbf{Goal Failure} & goal\_near\_wall, waypoint\_in\_tight\_space, door\_too\_narrow & goal\_wall\_distance, door\_width \\
+      \textbf{Localization Uncertainty} & high\_noise, noise\_level & --- \\
+      \textbf{Path Inefficiency} & obstacle\_clearance\_ratio, num\_obstacles, total\_obstacle\_area & min\_door\_narrow, goal\_through\_door \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+\end{frame}
+
+% ============================================================================
+\section{Anomaly Detection and Classification}
+% ============================================================================
+
+\begin{frame}{Anomaly Detection and Classification}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \textbf{Rule-Based Anomalies (8 Types)}
+      
+      \vspace{0.2cm}
+      
+      \footnotesize
+      \begin{itemize}
+        \item \textbf{goal\_failure}: Goal not reached
+        \item \textbf{no\_initiation}: Robot didn't start
+        \item \textbf{position\_error\_spike}: Sudden errors
+        \item \textbf{stuck}: Robot stopped moving
+        \item \textbf{high\_amcl\_uncertainty}: Poor localization
+        \item \textbf{high\_yaw\_error}: Orientation issues
+        \item \textbf{path\_inefficiency}: Sub-optimal path
+        \item \textbf{oscillation}: Jerky motion (smoothness $>$ 2.0)
+      \end{itemize}
+    \end{column}
+    
+    \begin{column}{0.45\textwidth}
+      \textbf{ML-Based Anomaly Detection}
+      
+      \vspace{0.2cm}
+      
+      \small
+      \textbf{Isolation Forest} trained on 8 standardized metrics:
+      \begin{itemize}
+        \item Captures multi-metric abnormal patterns missed by rules
+        \item Unsupervised learning for outlier detection
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Anomaly Detection Results}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \begin{center}
+        \includegraphics[width=\textwidth,height=0.65\textheight,keepaspectratio]{anomaly_by_category.png}
+      \end{center}
+    \end{column}
+    
+    \begin{column}{0.42\textwidth}
+      \textbf{Key Findings}
+      
+      \vspace{0.3cm}
+      
+      \begin{itemize}
+        \item Total occurrences: \textbf{341}
+        \item \textcolor{accentred}{\textbf{goal\_failure}} is most common (50\%)
+        \item \textbf{stuck} follows at 38.3\%
+        \item \textbf{Isolation Forest} catches 15\%
+        \item Single run can have multiple anomalies
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ============================================================================
+% ============================================================================
+\section{Correlations Analysis}
+% ============================================================================
+
+\begin{frame}{Anomaly Correlations Analysis}
+  \begin{itemize}
+    \item \textbf{position\_error\_spike + high\_yaw\_error} (Jaccard = 0.60)
+    \begin{itemize}
+      \item[$\rightarrow$] Poor orientation tracking leads to position drift
+    \end{itemize}
+    
+    \vspace{0.5cm}
+    
+    \item \textbf{high\_yaw\_error + path\_inefficiency} (Jaccard = 0.78)
+    \begin{itemize}
+      \item[$\rightarrow$] Orientation errors cause inefficient path execution
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+% ============================================================================
+\section{Early Prediction Insights}
+% ============================================================================
+
+\begin{frame}{Early Prediction: Predictability}
+  \begin{table}
+    \small
+    \renewcommand{\arraystretch}{1.3}
+    \begin{tabular}{@{}L{3.5cm} C{2.0cm} C{2.0cm} C{1.5cm}@{}}
+      \toprule
+      \textbf{Anomaly} & \textbf{PR-AUC} & \textbf{ROC-AUC} & \textbf{Cases} \\
+      \midrule
+      goal\_failure & 0.852 & 0.828 & 150 \\
+      stuck & 0.766 & 0.789 & 115 \\
+      Isolation Forest & 0.661 & 0.834 & 45 \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+\end{frame}
+
+\begin{frame}{Early Multi-features and Anomaly Correlation}
+  \begin{columns}[T]
+    \begin{column}{0.32\textwidth}
+      \begin{block}{\textbf{Stuck}}
+        \footnotesize
+        \begin{itemize}
+          \item path\_length: r=-0.491 
+          \item std\_velocity: r=-0.437 
+          \item path\_efficiency: r=-0.384 
+        \end{itemize}
+      \end{block}
+    \end{column}
+    
+    \begin{column}{0.32\textwidth}
+      \begin{block}{\textbf{Goal Failure}}
+        \footnotesize
+        \begin{itemize}
+          \item duration: r=+0.524 
+          \item mean\_angular\_vel: r=-0.283 
+          \item path\_length: r=+0.276 
+        \end{itemize}
+      \end{block}
+    \end{column}
+    
+    \begin{column}{0.32\textwidth}
+      \begin{block}{\textbf{high\_amcl\_uncertainty}}
+        \footnotesize
+        \begin{itemize}
+          \item rmse\_pos: r=+0.291 
+          \item max\_velocity: r=+0.277 
+          \item std\_pos\_error: r=+0.274 
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Causality Analysis Methodology}
+% ============================================================================
+
+\begin{frame}{Methodology Evolution}
+  \begin{center}
+    \textbf{Simple Decision Tree} $\rightarrow$ \textbf{Ensemble Model} $\rightarrow$ \textbf{Surrogate Model}
+    
+    \vspace{0.5cm}
+    
+    \includegraphics[width=0.85\textwidth,height=0.6\textheight,keepaspectratio]{model_comparison_f1.png}
+  \end{center}
+\end{frame}
+
+\begin{frame}{Current Approach}
+  \begin{itemize}
+    \item \textbf{Step 1: High-Capacity Model Training (Ensemble)}
+    \begin{itemize}
+      \item[$\rightarrow$] Voting Classifier: Decision Tree + Random Forest + Gradient Boosting
+      \item[$\rightarrow$] Separate trees for both log-based and scenario-based predictions
+      \item[$\rightarrow$] Prioritizes F1-score
+    \end{itemize}
+    
+    \vspace{0.2cm}
+    
+    \item \textbf{Step 2: Surrogate Model Training (Distilled Decision Tree)}
+    \begin{itemize}
+      \item[$\rightarrow$] Separate trees for both log-based and scenario-based predictions
+      \item[$\rightarrow$] Constrained tree (max\_depth=4)
+      \item[$\rightarrow$] Target: Ensemble predictions (not ground truth)
+    \end{itemize}
+    
+    \vspace{0.2cm}
+    
+    \item \textbf{Step 3: Rule Extraction}
+    \begin{itemize}
+      \item[$\rightarrow$] Extract paths with P(Anomaly) $>$ 0.5
+    \end{itemize}
+    
+    \vspace{0.2cm}
+    
+    \item \textbf{Step 4: FOL Translation}
+    \begin{itemize}
+      \item[$\rightarrow$] Map thresholds to semantic predicates
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{What is a Decision Tree / Surrogate Model?}
+  \begin{center}
+    \includegraphics[width=0.9\textwidth,height=0.6\textheight,keepaspectratio]{DT.png}
+  \end{center}
+  
+  \vspace{0.3cm}
+  
+  \footnotesize
+  \textbf{Why Surrogate?} Captures ensemble's knowledge in an interpretable tree structure, enabling FOL rule extraction while maintaining high fidelity ($>$90\%).
+\end{frame}
+
+% ============================================================================
+\section{Insights}
+% ============================================================================
+
+\begin{frame}{Technical Insights (Important)}
+  \begin{enumerate}
+    \item \textbf{Better quality rules with just scenario information}
+    \begin{itemize}
+      \item In case of many anomalies it showed better predictive power and generalization (F1 score and other metrics) when just used scenario description, robot information, and environment JSON file for deriving FOL rules instead of also including more informative logs, CSV files.
+    \end{itemize}
+    
+    \vspace{0.4cm}
+    
+    \item \textbf{Surrogate Distillation}
+    \begin{itemize}
+      \item Ensemble models achieve higher accuracy, but surrogate trees provide 90\%+ fidelity with full interpretability.
+      \item Surrogate trees were even simpler than simple decision trees yet showed better results (F1, confusion metrics).
+    \end{itemize}
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Domain and Methodological Insights}
+  \begin{enumerate}
+    \item \textbf{Narrow Door Width is Critical}: Doors $<$ 1.8× robot footprint cause $>$60\% of goal failures
+    
+    \vspace{0.2cm}
+    
+    \item \textbf{Sensor Noise Cascades}: High noise ($>$0.05) correlates with both localization errors AND path inefficiency
+    
+    \vspace{0.2cm}
+    
+    \item \textbf{Corridor Navigation is Challenging}: Narrow corridors ($<$3× footprint) are disproportionately associated with stuck states
+    
+    \vspace{0.2cm}
+    
+    \item \textbf{Static Obstacles Compound Difficulty}: Scenarios with obstacles + narrow passages have 2× failure rate
+    
+    \vspace{0.2cm}
+    
+    \item \textbf{Generalization Requires Feature Abstraction}: Relative features (clearance ratios) generalize better than absolute measurement numbers
+  \end{enumerate}
+\end{frame}
+
+% ============================================================================
+\section{Summary}
+% ============================================================================
+
+\begin{frame}{Summary}
+  \begin{center}
+    \Large\textcolor{uniblue}{\textbf{Team 2 Final Presentation}}\\
+    \vspace{0.5cm}
+    \normalsize Thank you!\\
+    \vspace{0.3cm}
+    Questions?
+  \end{center}
+\end{frame}
+
+\end{document}
