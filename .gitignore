@@ -22,8 +22,7 @@ build/
 output/
 
 # PDF output (comment out if you want to track PDFs)
-*.pdf
-*.md
+
 
 # Backup files
 *.bak

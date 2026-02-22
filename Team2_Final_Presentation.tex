@@ -1,19 +1,20 @@
-% Team 02 - Mid-Term Presentation: Anomaly Detection and Causal Analysis Pipeline
+% Team 02 – Final Presentation: Text Classification & OOD Detection with ModernBERT
 % Professional German University Style LaTeX Beamer Presentation
 
 \documentclass[aspectratio=169, 11pt]{beamer}
 
 % ============================================================================
-% THEME CONFIGURATION - German University Style
+% THEME CONFIGURATION – German University Style
 % ============================================================================
 \usetheme{Madrid}
 \usecolortheme{whale}
 
-% Custom colors inspired by German universities (e.g., TU/LMU style)
+% Custom colors inspired by German universities (TU/LMU style)
 \definecolor{uniblue}{RGB}{0, 51, 102}
 \definecolor{unigray}{RGB}{85, 85, 85}
 \definecolor{lightgray}{RGB}{240, 240, 240}
 \definecolor{accentred}{RGB}{153, 0, 0}
+\definecolor{accentgreen}{RGB}{0, 102, 51}
 
 % Apply custom colors
 \setbeamercolor{structure}{fg=uniblue}
@@ -21,6 +22,10 @@
 \setbeamercolor{title}{bg=uniblue, fg=white}
 \setbeamercolor{block title}{bg=uniblue, fg=white}
 \setbeamercolor{block body}{bg=lightgray, fg=black}
+\setbeamercolor{block title alerted}{bg=accentred, fg=white}
+\setbeamercolor{block body alerted}{bg=lightgray!50!white, fg=black}
+\setbeamercolor{block title example}{bg=accentgreen, fg=white}
+\setbeamercolor{block body example}{bg=lightgray!50!white, fg=black}
 \setbeamercolor{item}{fg=uniblue}
 \setbeamercolor{subitem}{fg=unigray}
 \setbeamercolor{footline}{fg=unigray}
@@ -55,6 +60,7 @@
 \usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta, calc}
 \usepackage{xcolor}
 \usepackage{array}
 \usepackage{multirow}
@@ -63,405 +69,741 @@
 % Table column types
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
 
 % ============================================================================
 % TITLE PAGE INFORMATION
 % ============================================================================
-\title[Anomaly Detection and Causal Analysis]{Robot Navigation Anomaly Detection and Causal Analysis}
-% \subtitle{Mid-Term Presentation -- AI Algorithms}
-\author[Team 02 Final Presentation]{Team 02 Final Presentation}
-\institute[Universität Bremen]{AI Algorithms – Theory and Engineering\\Winter Semester 2025/26}
-\date{January 27, 2026}
+\title[BERT Text Classification]{Multi-Class Text Classification with BERT}
+\author[Team]{ M. Nasim Palakka Valappil \& Ganesh Yadav Yatham }
+\institute[Universit\"at Bremen]{ Advanced Machine Learning\\Winter Semester 2025/26}
+\date{March 3, 2026}
 
 % ============================================================================
 % DOCUMENT
 % ============================================================================
 \begin{document}
 
-% Title Slide
+% ------ Title Slide ------
 \begin{frame}[plain]
   \titlepage
 \end{frame}
 
-% Table of Contents
+% ------ Outline ------
 \begin{frame}{Outline}
   \tableofcontents
 \end{frame}
 
 % ============================================================================
-\section{Requirements Identified}
+\section{Problem Statement}
 % ============================================================================
 
-\begin{frame}{Requirements Identified}
+\begin{frame}{Problem Statement}
+
+  \textbf{\large Task}
+
+  \vspace{0.3cm}
+
   \begin{itemize}
-    \item Metrics to quantify localization and navigation performance (For anomaly detection)
-    \item Anomaly detection (Single source and Multiple source)
-    \item Feature vectors for Anomaly Prediction
-    \item Anomaly Prediction FOL Rule Derivation
-    \item Scenario based and log based predictions
-    \item Implement as Python script (*.py) or package that includes the complete pipeline
+    \item \textbf{Multi-class text classification} on the 20 Newsgroups dataset \\ (20~newsgroup categories)
+    \item \textbf{Open-world extension:} detect inputs that do \emph{not} belong to any of the 20 known categories
   \end{itemize}
+
+  \vspace{0.6cm}
+
+  \textbf{\large Approach}
+
+  \vspace{0.3cm}
+
+  \begin{enumerate}
+    \item Fine-tune a \textbf{pre-trained foundational transformer model} (ModernBERT)
+    \item Systematically optimise hyperparameters with \textbf{Quasi-Random Search}
+    \item Extend to OOD detection using \textbf{Maximum Softmax Probability (MSP)}
+  \end{enumerate}
 \end{frame}
 
 % ============================================================================
-\section{Data Overview and Pre-processing}
+\section{Dataset Overview}
 % ============================================================================
 
-\begin{frame}{Dataset Overview}
+\begin{frame}{Dataset: 20 Newsgroups -- Overview}
   \begin{columns}[T]
-    \begin{column}{0.48\textwidth}
-      \begin{block}{Dataset Properties}
-        \begin{itemize}
-          \item \textbf{Total Scenarios:} 100 directories
-          \item \textbf{Runs per Scenario:} 3 (labeled 0, 1, 2)
-          \item \textbf{Total Runs:} $\sim$300 experiments
-          \item \textbf{Robot:} TurtleBot4 (0.22m diameter)
-        \end{itemize}
-      \end{block}
-      
-      \vspace{0.3cm}
-      
-      \begin{block}{Environment Types}
-        \begin{itemize}
-          \item door-width
-          \item door-size
-          \item room-size
-          \item hallway-window
-        \end{itemize}
-      \end{block}
+    \begin{column}{0.42\textwidth}
+      \footnotesize
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{@{}l l@{}}
+        \toprule
+        \textbf{Property} & \textbf{Value} \\
+        \midrule
+        Source        & \texttt{SetFit/20\_newsgroups} \\
+        Classes       & 20 newsgroup categories \\
+        Train samples & 11\,314 \\
+        Test samples  & 7\,532 \\
+        Total         & 18\,846 \\
+        \bottomrule
+      \end{tabular}
     \end{column}
-    
-    \begin{column}{0.48\textwidth}
-      \begin{block}{File Structure per Run}
-        \footnotesize
-        \begin{tabular}{@{}l l@{}}
-          \toprule
-          \textbf{File} & \textbf{Content} \\
-          \midrule
-          poses.csv & Robot trajectories \\
-          behaviors.csv & BT execution logs \\
-          rosbag2.csv & ROS2 bag + AMCL \\
-          scenario.config & Goals, params \\
-          run.yaml & Run metadata \\
-          \bottomrule
-        \end{tabular}
-      \end{block}
-    \end{column}
-  \end{columns}
-\end{frame}
 
-\begin{frame}{Pre-processing Steps}
-  \begin{itemize}
-    \item \textbf{Data Synchronization}: Aligns the robot's estimated position with the ``Ground Truth'' (actual capabilities) data.
-    \vspace{0.2cm}
-    \item \textbf{Stationary Filtering}: Removes irrelevant data where the robot was not moving, typically at the start or end of a run.
-    \vspace{0.2cm}
-    \item \textbf{Coordinate \& Orientation Normalization}:
-    \vspace{0.2cm}
-    \item \textbf{Yaw Normalization}: Normalizes all yaw angles to the range $[-\pi, \pi]$.
-    \vspace{0.2cm}
-    \item \textbf{Quaternion Conversion}: Converts orientation data from quaternion $(w,x,y,z)$ to yaw angles for easier error calculation.
-  \end{itemize}
-\end{frame}
-
-% ============================================================================
-\section{Performance Metrics and Features}
-% ============================================================================
-
-\begin{frame}{Performance Metrics (8 Metrics)}
-  \begin{table}
-    \footnotesize
-    \renewcommand{\arraystretch}{1.2}
-    \begin{tabular}{@{}L{3.8cm} c L{4.5cm} L{2.2cm}@{}}
-      \toprule
-      \textbf{Metric} & \textbf{Unit} & \textbf{Description} & \textbf{Category} \\
-      \midrule
-      mean\_pos\_error & m & Average position error & Localization \\
-      rmse\_pos & m & Root mean square error (spike sensitive) & Localization \\
-      mean\_yaw\_error & rad & Average orientation error & Localization \\
-      executed\_path\_length & m & Total path traveled & Path \\
-      path\_efficiency & ratio & gt\_path / executed (1 is best) & Path \\
-      mean\_linear\_velocity & m/s & Average movement speed & Kinematics \\
-      trajectory\_smoothness & rad/s² & Angular acceleration (lower = smoother) & Kinematics \\
-      duration & s & Total run time & Kinematics \\
-      mean\_amcl\_uncertainty & m & Average localization confidence & AMCL \\
-      \bottomrule
-    \end{tabular}
-  \end{table}
-\end{frame}
-
-\begin{frame}{Features for Causal Analysis (27 Features)}
-  \begin{table}
-    \tiny
-    \renewcommand{\arraystretch}{1.3}
-    \begin{tabular}{@{}L{2.0cm} L{6.0cm} L{4.5cm}@{}}
-      \toprule
-      \textbf{Anomaly Type} & \textbf{Primary Predictors} & \textbf{Secondary Predictors} \\
-      \midrule
-      \textbf{Collision} & near\_wall, tight\_clearance, near\_static\_obstacle, clearance\_ratio & min\_wall\_distance, min\_obstacle\_distance \\
-      \textbf{Stuck} & in\_narrow\_corridor, in\_small\_room, tight\_obstacle\_clearance & corridor\_width, room\_area \\
-      \textbf{Goal Failure} & goal\_near\_wall, waypoint\_in\_tight\_space, door\_too\_narrow & goal\_wall\_distance, door\_width \\
-      \textbf{Localization Uncertainty} & high\_noise, noise\_level & --- \\
-      \textbf{Path Inefficiency} & obstacle\_clearance\_ratio, num\_obstacles, total\_obstacle\_area & min\_door\_narrow, goal\_through\_door \\
-      \bottomrule
-    \end{tabular}
-  \end{table}
-\end{frame}
-
-% ============================================================================
-\section{Anomaly Detection and Classification}
-% ============================================================================
-
-\begin{frame}{Anomaly Detection and Classification}
-  \begin{columns}[T]
-    \begin{column}{0.5\textwidth}
-      \textbf{Rule-Based Anomalies (8 Types)}
-      
-      \vspace{0.2cm}
-      
+    \begin{column}{0.55\textwidth}
+      \textbf{Category groups}
       \footnotesize
       \begin{itemize}
-        \item \textbf{goal\_failure}: Goal not reached
-        \item \textbf{no\_initiation}: Robot didn't start
-        \item \textbf{position\_error\_spike}: Sudden errors
-        \item \textbf{stuck}: Robot stopped moving
-        \item \textbf{high\_amcl\_uncertainty}: Poor localization
-        \item \textbf{high\_yaw\_error}: Orientation issues
-        \item \textbf{path\_inefficiency}: Sub-optimal path
-        \item \textbf{oscillation}: Jerky motion (smoothness $>$ 2.0)
-      \end{itemize}
-    \end{column}
-    
-    \begin{column}{0.45\textwidth}
-      \textbf{ML-Based Anomaly Detection}
-      
-      \vspace{0.2cm}
-      
-      \small
-      \textbf{Isolation Forest} trained on 8 standardized metrics:
-      \begin{itemize}
-        \item Captures multi-metric abnormal patterns missed by rules
-        \item Unsupervised learning for outlier detection
+        \item \textbf{Computer (5):} \texttt{comp.graphics}, \texttt{comp.os.ms-windows.misc}, \texttt{comp.sys.ibm.pc.hardware}, \texttt{comp.sys.mac.hardware}, \texttt{comp.windows.x}
+        \item \textbf{Recreation (4):} \texttt{rec.autos}, \texttt{rec.motorcycles}, \texttt{rec.sport.baseball}, \texttt{rec.sport.hockey}
+        \item \textbf{Science (4):} \texttt{sci.crypt}, \texttt{sci.electronics}, \texttt{sci.med}, \texttt{sci.space}
+        \item \textbf{Politics / Religion (6):} \texttt{talk.politics.*}, \texttt{alt.atheism}, \texttt{soc.religion.christian}
+        \item \textbf{Other (1):} \texttt{misc.forsale}
       \end{itemize}
     \end{column}
   \end{columns}
 \end{frame}
 
-\begin{frame}{Anomaly Detection Results}
+\begin{frame}{Dataset -- Splits and Statistics}
   \begin{columns}[T]
-    \begin{column}{0.55\textwidth}
-      \begin{center}
-        \includegraphics[width=\textwidth,height=0.65\textheight,keepaspectratio]{anomaly_by_category.png}
-      \end{center}
+    \begin{column}{0.48\textwidth}
+      \footnotesize
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{@{}l c l@{}}
+        \toprule
+        \textbf{Split} & \textbf{Size} & \textbf{Purpose} \\
+        \midrule
+        Train      & 11\,314 & Model training \\
+        Validation & 3\,766  & HPO \& model selection \\
+        Test       & 3\,766  & Final held-out evaluation \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{0.4cm}
+
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{@{}l c c@{}}
+        \toprule
+        \textbf{Metric} & \textbf{Characters} & \textbf{Words} \\
+        \midrule
+        Mean   & $\sim$1\,800 & $\sim$300 \\
+        Median & $\sim$900    & $\sim$150 \\
+        P95    & $\sim$6\,500 & $\sim$1\,100 \\
+        \bottomrule
+      \end{tabular}
     \end{column}
-    
-    \begin{column}{0.42\textwidth}
-      \textbf{Key Findings}
-      
-      \vspace{0.3cm}
-      
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Tokenisation coverage} (\texttt{max\_length})
+
+      \vspace{0.2cm}
+
       \begin{itemize}
-        \item Total occurrences: \textbf{341}
-        \item \textcolor{accentred}{\textbf{goal\_failure}} is most common (50\%)
-        \item \textbf{stuck} follows at 38.3\%
-        \item \textbf{Isolation Forest} catches 15\%
-        \item Single run can have multiple anomalies
+        \item 128 tokens $\rightarrow$ $\sim$50\,\% coverage
+        \item \textbf{256 tokens $\rightarrow$ $\sim$75\,\% coverage} $\;\leftarrow$ chosen
+        \item 512 tokens $\rightarrow$ $\sim$90\,\% coverage
+      \end{itemize}
+
+      \vspace{0.3cm}
+
+      \footnotesize
+      \begin{itemize}
+        \item[\textcolor{accentgreen}{+}] Manageable training time and computational cost
+        \item[\textcolor{accentgreen}{+}] First 256 tokens are generally sufficient to predict the label
+        \item[\textcolor{accentred}{--}] Some information loss for very long documents
       \end{itemize}
     \end{column}
   \end{columns}
 \end{frame}
 
 % ============================================================================
-% ============================================================================
-\section{Correlations Analysis}
+\section{Model: ModernBERT}
 % ============================================================================
 
-\begin{frame}{Anomaly Correlations Analysis}
-  \begin{itemize}
-    \item \textbf{position\_error\_spike + high\_yaw\_error} (Jaccard = 0.60)
-    \begin{itemize}
-      \item[$\rightarrow$] Poor orientation tracking leads to position drift
-    \end{itemize}
-    
-    \vspace{0.5cm}
-    
-    \item \textbf{high\_yaw\_error + path\_inefficiency} (Jaccard = 0.78)
-    \begin{itemize}
-      \item[$\rightarrow$] Orientation errors cause inefficient path execution
-    \end{itemize}
-  \end{itemize}
+\begin{frame}{Model: ModernBERT}
+  Recent \textbf{encoder-only} model by HuggingFace -- a modernised version of BERT with multiple architectural improvements for robustness and efficiency.
+
+  \vspace{0.4cm}
+
+  \begin{columns}[T]
+    \begin{column}{0.42\textwidth}
+      \textbf{BERT $\rightarrow$ RoBERTa}
+
+      \vspace{0.15cm}
+
+      \begin{itemize}
+        \item Significantly more training data
+        \item No Next Sentence Prediction loss
+        \item Dynamic masking
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.54\textwidth}
+      \textbf{RoBERTa $\rightarrow$ ModernBERT}
+
+      \vspace{0.15cm}
+
+      \begin{itemize}
+        \item Even more training data
+        \item \textbf{GeGLU} activation (more robust than GeLU)
+        \item No bias terms except in last linear layer
+        \item \textbf{Pre-normalisation} (LayerNorm at the beginning of sub-layers)
+        \item Alternating attention
+      \end{itemize}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 % ============================================================================
-\section{Early Prediction Insights}
+\section{Training Strategy}
 % ============================================================================
 
-\begin{frame}{Early Prediction: Predictability}
-  \begin{table}
-    \small
-    \renewcommand{\arraystretch}{1.3}
-    \begin{tabular}{@{}L{3.5cm} C{2.0cm} C{2.0cm} C{1.5cm}@{}}
+\begin{frame}{Training Strategy}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      \textbf{Layer Freezing}
+
+      \vspace{0.2cm}
+
+      \footnotesize
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{@{}l l@{}}
+        \toprule
+        \textbf{Component} & \textbf{Status} \\
+        \midrule
+        Embedding layer      & Frozen \\
+        Encoder layers 0--13 & Frozen (bottom 50\%) \\
+        Encoder layers 14--27 & Trainable (top 50\%) \\
+        Classification head  & Trainable \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{0.3cm}
+      \scriptsize
+      Further unfreezing layers significantly increased compute requirements without meaningful accuracy gains.
+    \end{column}
+
+    \begin{column}{0.52\textwidth}
+      \textbf{Training Configuration}
+
+      \vspace{0.2cm}
+
+      \footnotesize
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{@{}l l@{}}
+        \toprule
+        \textbf{Parameter} & \textbf{Value} \\
+        \midrule
+        Optimiser        & AdamW \\
+        Epochs           & 4 \\
+        Batch size       & 16 per GPU \\
+        Max sequence len  & 256 tokens \\
+        Mixed precision  & FP16 (CUDA) \\
+        Gradient clipping & max\_norm = 1.0 \\
+        LR scheduler     & Linear warmup + decay \\
+        Hardware         & NVIDIA Tesla T4 \\
+        Multi-GPU        & \texttt{nn.DataParallel} \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Hyperparameter Optimisation}
+% ============================================================================
+
+\begin{frame}{Hyperparameter Optimisation}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Method~1:} Hyperparameters from the original ModernBERT paper, theory, and intuition.
+
+      \vspace{0.4cm}
+
+      \textbf{Method~2: Quasi-Random Search (QRS) via Optuna}
+
+      \vspace{0.15cm}
+
+      \begin{itemize}
+        \item Better space coverage than grid or pure random search
+        \item Uses \textbf{Quasi-Monte Carlo (QMC)} sampling for low-discrepancy sequences
+        \item More efficient exploration of the hyperparameter landscape
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Search Space}
+
+      \vspace{0.2cm}
+
+      \footnotesize
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{@{}l l l@{}}
+        \toprule
+        \textbf{Hyperparameter} & \textbf{Range} & \textbf{Scale} \\
+        \midrule
+        Learning rate & $[10^{-5},\, 10^{-4}]$ & Log \\
+        Weight decay  & $[0.001,\, 0.1]$        & Linear \\
+        Warmup ratio  & $[0.0,\, 0.2]$          & Linear \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{0.4cm}
+
+      \normalsize
+      \textbf{Setup}
+      \begin{itemize}
+        \item Objective: \textbf{maximise validation accuracy}
+        \item Aggressive memory management (delete non-top-3 checkpoints)
+        \item Optuna visualisations: slice plots \& parameter importance
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{HPO -- Visualisation and Model Selection}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Optuna Outputs}
+
+      \vspace{0.2cm}
+
+      \begin{itemize}
+        \item \textbf{Slice plots}: validation accuracy vs.\ each hyperparameter
+        \item \textbf{Parameter importance}: which HPs matter most for performance
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Top-3 Model Selection Process}
+
+      \vspace{0.2cm}
+
+      \begin{enumerate}
+        \item All trials completed
+        \item Sort by validation accuracy (desc.)
+        \item Select Top~3
+        \item Evaluate each on held-out \textbf{test set}
+        \item Save best 2 models for deployment
+      \end{enumerate}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Evaluation: Top-3 Models}
+% ============================================================================
+
+\begin{frame}{Evaluation: Top-3 Models}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      \textbf{Evaluation Metrics}
+
+      \vspace{0.15cm}
+
+      \scriptsize
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{@{}l L{4.0cm}@{}}
+        \toprule
+        \textbf{Metric} & \textbf{Description} \\
+        \midrule
+        Accuracy        & Correct predictions / total \\
+        Macro Prec.\    & Mean precision across 20 classes \\
+        Macro Recall    & Mean recall across 20 classes \\
+        Macro F1        & Harmonic mean of prec.\ \& recall \\
+        Weighted F1     & F1 weighted by class support \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+
+    \begin{column}{0.52\textwidth}
+      \textbf{Test-Set Performance}
+
+      \vspace{0.15cm}
+
+      \scriptsize
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{@{}l c c c@{}}
+        \toprule
+        \textbf{Metric} & \textbf{Top-1} & \textbf{Top-2} & \textbf{Top-3} \\
+        \midrule
+        Accuracy    & 74.93\% & 74.35\% & 73.26\% \\
+        Macro F1    & 0.7385  & 0.7353  & 0.7246  \\
+        Weighted F1 & 0.7486  & 0.7453  & 0.7344  \\
+        Test Loss   & 1.2554  & 1.4491  & 1.6971  \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{0.25cm}
+
+      \normalsize
+      \textbf{Best Hyperparameters (Top-1)}
+
+      \vspace{0.10cm}
+
+      \scriptsize
+      \begin{tabular}{@{}l c@{}}
+        \toprule
+        Learning rate & $2.3688 \times 10^{-5}$ \\
+        Weight decay  & 0.0951 \\
+        Warmup ratio  & 0.1463 \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Out-of-Distribution Detection}
+% ============================================================================
+
+\begin{frame}{Out-of-Distribution Detection}
+  \textbf{Strategy: Maximum Softmax Probability (MSP)}
+
+  \vspace{0.2cm}
+
+  $$\text{score}(x) = \max_k \; \text{softmax}\!\left(\frac{\mathbf{z}(x)}{T}\right)_k$$
+
+  \begin{itemize}
+    \item \textbf{If} $\text{score}(x) \geq \tau$ $\;\rightarrow\;$ classify as one of the 20 classes \textcolor{accentgreen}{(In-Distribution)}
+    \item \textbf{If} $\text{score}(x) < \tau$ $\;\rightarrow\;$ reject as \textbf{``null / other''} \textcolor{accentred}{(Out-of-Distribution)}
+  \end{itemize}
+
+  \vspace{0.3cm}
+
+  \footnotesize
+  \renewcommand{\arraystretch}{1.15}
+  \begin{tabular}{@{}l L{11cm}@{}}
+    \toprule
+    \textbf{Parameter} & \textbf{Effect} \\
+    \midrule
+    Temperature $T$ & $T > 1$: softens probabilities $\rightarrow$ better ID/OOD separation \\
+    Threshold $\tau$ & Higher $\tau$: stricter $\rightarrow$ fewer false positives, more false negatives \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+
+\begin{frame}{OOD Detection Setup}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{In-Distribution (ID)}
+      \begin{itemize}
+        \item \textbf{20~Newsgroups test set} (3\,766 samples)
+        \item Same split used for classification evaluation
+      \end{itemize}
+
+      \vspace{0.4cm}
+
+      \textbf{Out-of-Distribution (OOD)}
+      \begin{itemize}
+        \item \textbf{AG News} -- 4-class news topic classification
+        \item 2\,000 randomly sampled test documents
+        \item \textbf{Completely different domain} from 20~Newsgroups
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Evaluation Protocol}
+
+      \vspace{0.15cm}
+
+      \begin{enumerate}
+        \item Collect model logits for both ID and OOD data
+        \item Compute MSP scores at temperatures $T \in \{6, 7, 8, 9, 10\}$
+        \item For each $T$, report:
+          \begin{itemize}
+            \item \textbf{AUROC} (Area Under ROC Curve)
+            \item \textbf{AP} (Average Precision)
+            \item \textbf{FPR@TPR70}
+          \end{itemize}
+        \item Per-threshold table: FPR, FNR, retained ID accuracy, \% ID kept
+      \end{enumerate}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{OOD Detection -- The FP\,/\,FN Trade-off}
+  \begin{columns}[T]
+    \begin{column}{0.44\textwidth}
+      \textbf{Understanding the Threshold $\tau$}
+
+      \vspace{0.2cm}
+
+      \footnotesize
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{@{}l l l@{}}
+        \toprule
+        \textbf{Direction} & \textbf{Effect} & \textbf{Consequence} \\
+        \midrule
+        $\uparrow\;\tau$ & Stricter & \textcolor{accentgreen}{$\downarrow$ FP}\;/\;\textcolor{accentred}{$\uparrow$ FN} \\
+        $\downarrow\;\tau$ & Looser  & \textcolor{accentgreen}{$\downarrow$ FN}\;/\;\textcolor{accentred}{$\uparrow$ FP} \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{0.4cm}
+      \normalsize
+      \centering
+      \textit{The optimal operating point depends on tolerance for false positives vs.\ false negatives.}
+    \end{column}
+
+    \begin{column}{0.52\textwidth}
+      \textbf{Threshold Table} ($T = 6.00$)
+
+      \vspace{0.1cm}
+
+      \tiny
+      AUROC\,=\,0.7961 \quad AP\,=\,0.8841 \quad FPR@TPR70\,=\,0.2050
+
+      \vspace{0.15cm}
+
+      \footnotesize
+      \renewcommand{\arraystretch}{1.1}
+      \begin{tabular}{@{}c c c c c@{}}
+        \toprule
+        $\tau$ & FPR & FNR & ID Acc & \% ID \\
+        \midrule
+        0.10 & 0.875 & 0.052 & 0.785 & 94.8\% \\
+        0.20 & 0.263 & 0.249 & 0.874 & 75.1\% \\
+        0.30 & 0.105 & 0.481 & 0.942 & 51.9\% \\
+        0.40 & 0.031 & 0.720 & 0.974 & 28.0\% \\
+        0.50 & 0.000 & 0.943 & 0.991 & 5.7\% \\
+        \bottomrule
+      \end{tabular}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{OOD Detection -- Diagnostic Visualisations}
+  \textbf{Three diagnostic plots} are generated per temperature:
+
+  \vspace{0.3cm}
+
+  \begin{columns}[T]
+    \begin{column}{0.30\textwidth}
+      \centering
+      \textbf{1.\;ROC Curve}
+
+      \vspace{0.2cm}
+
+      \footnotesize
+      \begin{itemize}
+        \item X: FPR, Y: TPR
+        \item AUROC summarises discriminative quality
+        \item Annotated with FPR@TPR70
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.36\textwidth}
+      \centering
+      \textbf{2.\;Confidence Distributions}
+
+      \vspace{0.2cm}
+
+      \footnotesize
+      \begin{itemize}
+        \item Histogram of MSP scores for ID vs.\ OOD
+        \item Good detection $\rightarrow$ well-separated distributions
+        \item OOD should cluster at lower confidence
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.30\textwidth}
+      \centering
+      \textbf{3.\;FP\,/\,FN Trade-off}
+
+      \vspace{0.2cm}
+
+      \footnotesize
+      \begin{itemize}
+        \item FPR and FNR vs.\ threshold $\tau$
+        \item Crossing point = balanced operating point
+        \item Select $\tau$ per application needs
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Results}
+% ============================================================================
+
+\begin{frame}{Results -- OOD Temperature Comparison}
+  \begin{center}
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{@{}c c c c@{}}
       \toprule
-      \textbf{Anomaly} & \textbf{PR-AUC} & \textbf{ROC-AUC} & \textbf{Cases} \\
+      \textbf{Temperature $T$} & \textbf{AUROC} & \textbf{AP} & \textbf{FPR@TPR70} \\
       \midrule
-      goal\_failure & 0.852 & 0.828 & 150 \\
-      stuck & 0.766 & 0.789 & 115 \\
-      Isolation Forest & 0.661 & 0.834 & 45 \\
+      6.00  & 0.7961 & 0.8841 & 0.2050 \\
+      7.00  & 0.7986 & 0.8860 & 0.2000 \\
+      8.00  & 0.8003 & 0.8875 & 0.1970 \\
+      9.00  & 0.8016 & 0.8885 & 0.1930 \\
+      \textbf{10.00} & \textbf{0.8026} & \textbf{0.8893} & \textbf{0.1910} \\
       \bottomrule
     \end{tabular}
-  \end{table}
+
+    \vspace{0.5cm}
+
+    Higher temperatures yield modest improvements across all metrics.\\[0.15cm]
+    Best performance at $T = 10$:\; AUROC\,=\,0.8026,\; AP\,=\,0.8893,\; FPR@TPR70\,=\,0.1910
+  \end{center}
 \end{frame}
 
-\begin{frame}{Early Multi-features and Anomaly Correlation}
+% ============================================================================
+\section{Pipeline Summary}
+% ============================================================================
+
+\begin{frame}{Pipeline Summary}
+  \begin{center}
+    \begin{tikzpicture}[
+      node distance=0.55cm,
+      box/.style={
+        draw=uniblue, fill=lightgray, rounded corners,
+        text width=11cm, minimum height=0.7cm,
+        align=left, font=\small
+      }
+    ]
+      \node[box] (s1) {\textbf{1.}\; Data Loading (20 Newsgroups via HuggingFace) $\rightarrow$ Train\,/\,Validation\,/\,Test split};
+      \node[box, below=of s1] (s2) {\textbf{2.}\; Tokenisation (ModernBERT tokenizer, max\_len\,=\,256)};
+      \node[box, below=of s2] (s3) {\textbf{3.}\; Model Setup (ModernBERT-Large, 50\,\% layers frozen)};
+      \node[box, below=of s3] (s4) {\textbf{4.}\; Hyperparameter Optimisation $\rightarrow$ Optuna QRS (LR, weight decay, warmup ratio)};
+      \node[box, below=of s4] (s5) {\textbf{5.}\; Model Selection (Top~3 $\rightarrow$ evaluate on test set)};
+      \node[box, below=of s5] (s6) {\textbf{6.}\; OOD Detection (MSP + Temperature Scaling)\; $\rightarrow$\; ID: 20\,Newsgroups\;\textbar\; OOD: AG\,News};
+
+      \draw[-{Stealth[length=3mm]}, thick, uniblue] (s1) -- (s2);
+      \draw[-{Stealth[length=3mm]}, thick, uniblue] (s2) -- (s3);
+      \draw[-{Stealth[length=3mm]}, thick, uniblue] (s3) -- (s4);
+      \draw[-{Stealth[length=3mm]}, thick, uniblue] (s4) -- (s5);
+      \draw[-{Stealth[length=3mm]}, thick, uniblue] (s5) -- (s6);
+    \end{tikzpicture}
+  \end{center}
+\end{frame}
+
+% ============================================================================
+\section{Key Design Decisions}
+% ============================================================================
+
+\begin{frame}{Key Design Decisions}
+  \begin{enumerate}
+    \item \textbf{Layer Freezing (50\%)}
+    \begin{itemize}
+      \item Reduces trainable parameters by $\sim$50\,\%
+      \item Faster training, lower memory $\rightarrow$ enables larger batch sizes
+      \item Minimal accuracy loss: lower layers learn general language features
+    \end{itemize}
+
+    \vspace{0.25cm}
+
+    \item \textbf{Quasi-Random Search over Grid/Random}
+    \begin{itemize}
+      \item QMC sampling provides \textbf{better coverage} of the search space
+    \end{itemize}
+
+    \vspace{0.25cm}
+
+    \item \textbf{Validation Split from Test Set}
+    \begin{itemize}
+      \item Original 20~Newsgroups only has train/test
+      \item Split test 50/50 $\rightarrow$ separate validation for HPO and test for final evaluation
+      \item Avoids data leakage: HPO decisions never touch the test set
+    \end{itemize}
+
+    \vspace{0.25cm}
+
+    \item \textbf{Top-2 Model for OOD (not Top-1)}
+    \begin{itemize}
+      \item Top-1 model may overfit to validation $\rightarrow$ biased confidence scores
+      \item Top-2 provides a more robust baseline for OOD analysis
+    \end{itemize}
+  \end{enumerate}
+\end{frame}
+
+% ============================================================================
+\section{Challenges}
+% ============================================================================
+
+\begin{frame}{Technical Challenges}
   \begin{columns}[T]
-    \begin{column}{0.32\textwidth}
-      \begin{block}{\textbf{Stuck}}
-        \footnotesize
-        \begin{itemize}
-          \item path\_length: r=-0.491 
-          \item std\_velocity: r=-0.437 
-          \item path\_efficiency: r=-0.384 
-        \end{itemize}
-      \end{block}
+    \begin{column}{0.48\textwidth}
+      \textbf{1.\; Memory Management}
+
+      \vspace{0.15cm}
+
+      \begin{itemize}
+        \item Large model $\times$ multiple HPO trials requires aggressive clean-up
+        \item \texttt{gc.collect()}, \texttt{cuda.empty\_cache()}
+        \item Delete non-top-3 checkpoints during search
+      \end{itemize}
+
+      \vspace{0.4cm}
+
+      \textbf{2.\; DataParallel Compatibility}
+
+      \vspace{0.15cm}
+
+      \begin{itemize}
+        \item ModernBERT's compiled attention breaks \texttt{nn.DataParallel}
+        \item Solution: switched to \texttt{eager} attention mode
+      \end{itemize}
     \end{column}
-    
-    \begin{column}{0.32\textwidth}
-      \begin{block}{\textbf{Goal Failure}}
-        \footnotesize
-        \begin{itemize}
-          \item duration: r=+0.524 
-          \item mean\_angular\_vel: r=-0.283 
-          \item path\_length: r=+0.276 
-        \end{itemize}
-      \end{block}
-    \end{column}
-    
-    \begin{column}{0.32\textwidth}
-      \begin{block}{\textbf{high\_amcl\_uncertainty}}
-        \footnotesize
-        \begin{itemize}
-          \item rmse\_pos: r=+0.291 
-          \item max\_velocity: r=+0.277 
-          \item std\_pos\_error: r=+0.274 
-        \end{itemize}
-      \end{block}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{3.\; Tokenisation Trade-off}
+
+      \vspace{0.15cm}
+
+      \begin{itemize}
+        \item 256 tokens covers $\sim$75\,\% of documents
+        \item Longer sequences $=$ more memory, diminishing returns
+      \end{itemize}
+
+      \vspace{0.4cm}
+
+      \begin{alertblock}{Lesson Learned}
+        Errors in training pipeline can be very costly when running Optuna Quasi-Random HPO on large transformer models, as each iteration can take hours to run.
+      \end{alertblock}
     \end{column}
   \end{columns}
 \end{frame}
 
 % ============================================================================
-\section{Causality Analysis Methodology}
+\section{Conclusion and Future Work}
 % ============================================================================
 
-\begin{frame}{Methodology Evolution}
-  \begin{center}
-    \textbf{Simple Decision Tree} $\rightarrow$ \textbf{Ensemble Model} $\rightarrow$ \textbf{Surrogate Model}
-    
-    \vspace{0.5cm}
-    
-    \includegraphics[width=0.85\textwidth,height=0.6\textheight,keepaspectratio]{model_comparison_f1.png}
-  \end{center}
-\end{frame}
+\begin{frame}{Conclusion and Future Work}
+  \textbf{Summary}
 
-\begin{frame}{Current Approach}
+  \vspace{0.2cm}
+
   \begin{itemize}
-    \item \textbf{Step 1: High-Capacity Model Training (Ensemble)}
-    \begin{itemize}
-      \item[$\rightarrow$] Voting Classifier: Decision Tree + Random Forest + Gradient Boosting
-      \item[$\rightarrow$] Separate trees for both log-based and scenario-based predictions
-      \item[$\rightarrow$] Prioritizes F1-score
-    \end{itemize}
-    
-    \vspace{0.2cm}
-    
-    \item \textbf{Step 2: Surrogate Model Training (Distilled Decision Tree)}
-    \begin{itemize}
-      \item[$\rightarrow$] Separate trees for both log-based and scenario-based predictions
-      \item[$\rightarrow$] Constrained tree (max\_depth=4)
-      \item[$\rightarrow$] Target: Ensemble predictions (not ground truth)
-    \end{itemize}
-    
-    \vspace{0.2cm}
-    
-    \item \textbf{Step 3: Rule Extraction}
-    \begin{itemize}
-      \item[$\rightarrow$] Extract paths with P(Anomaly) $>$ 0.5
-    \end{itemize}
-    
-    \vspace{0.2cm}
-    
-    \item \textbf{Step 4: FOL Translation}
-    \begin{itemize}
-      \item[$\rightarrow$] Map thresholds to semantic predicates
-    \end{itemize}
+    \item Successfully fine-tuned \textbf{ModernBERT-Large} on 20~Newsgroups (20-class classification)
+    \item Systematic \textbf{hyperparameter optimisation} with Optuna Quasi-Random Search
+    \item Extended to \textbf{OOD detection} using MSP with temperature scaling
+    \item Comprehensive evaluation with AUROC, AP, FPR@TPR70, and threshold analysis
+  \end{itemize}
+
+  \vspace{0.5cm}
+
+  \textbf{Future Work}
+
+  \vspace{0.2cm}
+
+  \begin{itemize}
+    \item More trials of quasi-random search
+    \item Bayesian HPO
+    \item Experiment with other BERT variants
   \end{itemize}
 \end{frame}
 
-\begin{frame}{What is a Decision Tree / Surrogate Model?}
+% ============================================================================
+
+\begin{frame}[plain]
   \begin{center}
-    \includegraphics[width=0.9\textwidth,height=0.6\textheight,keepaspectratio]{DT.png}
-  \end{center}
-  
-  \vspace{0.3cm}
-  
-  \footnotesize
-  \textbf{Why Surrogate?} Captures ensemble's knowledge in an interpretable tree structure, enabling FOL rule extraction while maintaining high fidelity ($>$90\%).
-\end{frame}
+    \vfill
+    {\Large\textcolor{uniblue}{\textbf{Thank You!}}}
 
-% ============================================================================
-\section{Insights}
-% ============================================================================
+    \vspace{0.6cm}
 
-\begin{frame}{Technical Insights (Important)}
-  \begin{enumerate}
-    \item \textbf{Better quality rules with just scenario information}
-    \begin{itemize}
-      \item In case of many anomalies it showed better predictive power and generalization (F1 score and other metrics) when just used scenario description, robot information, and environment JSON file for deriving FOL rules instead of also including more informative logs, CSV files.
-    \end{itemize}
-    
+    {\large Team -- M. Nasim Palakka Valappil \& Ganesh Yadav Yatham }
+
     \vspace{0.4cm}
-    
-    \item \textbf{Surrogate Distillation}
-    \begin{itemize}
-      \item Ensemble models achieve higher accuracy, but surrogate trees provide 90\%+ fidelity with full interpretability.
-      \item Surrogate trees were even simpler than simple decision trees yet showed better results (F1, confusion metrics).
-    \end{itemize}
-  \end{enumerate}
-\end{frame}
 
-\begin{frame}{Domain and Methodological Insights}
-  \begin{enumerate}
-    \item \textbf{Narrow Door Width is Critical}: Doors $<$ 1.8× robot footprint cause $>$60\% of goal failures
-    
-    \vspace{0.2cm}
-    
-    \item \textbf{Sensor Noise Cascades}: High noise ($>$0.05) correlates with both localization errors AND path inefficiency
-    
-    \vspace{0.2cm}
-    
-    \item \textbf{Corridor Navigation is Challenging}: Narrow corridors ($<$3× footprint) are disproportionately associated with stuck states
-    
-    \vspace{0.2cm}
-    
-    \item \textbf{Static Obstacles Compound Difficulty}: Scenarios with obstacles + narrow passages have 2× failure rate
-    
-    \vspace{0.2cm}
-    
-    \item \textbf{Generalization Requires Feature Abstraction}: Relative features (clearance ratios) generalize better than absolute measurement numbers
-  \end{enumerate}
-\end{frame}
-
-% ============================================================================
-\section{Summary}
-% ============================================================================
-
-\begin{frame}{Summary}
-  \begin{center}
-    \Large\textcolor{uniblue}{\textbf{Team 2 Final Presentation}}\\
-    \vspace{0.5cm}
-    \normalsize Thank you!\\
-    \vspace{0.3cm}
-    Questions?
+    {\normalsize Questions?}
+    \vfill
   \end{center}
 \end{frame}
 
