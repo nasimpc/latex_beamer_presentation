@@ -619,57 +619,6 @@ Weighted F1 & 0.7453 & 0.7700 & +0.0248 \\
   \end{columns}
 \end{frame}
 
-\begin{frame}{OOD Detection -- The FP\,/\,FN Trade-off}
-  \begin{columns}[T]
-    \begin{column}{0.44\textwidth}
-      \textbf{Understanding the Threshold $\tau$}
-
-      \vspace{0.2cm}
-
-      \footnotesize
-      \renewcommand{\arraystretch}{1.15}
-      \begin{tabular}{@{}l l l@{}}
-        \toprule
-        \textbf{Direction} & \textbf{Effect} & \textbf{Consequence} \\
-        \midrule
-        $\uparrow\;\tau$ & Stricter & \textcolor{accentgreen}{$\downarrow$ FP}\;/\;\textcolor{accentred}{$\uparrow$ FN} \\
-        $\downarrow\;\tau$ & Looser  & \textcolor{accentgreen}{$\downarrow$ FN}\;/\;\textcolor{accentred}{$\uparrow$ FP} \\
-        \bottomrule
-      \end{tabular}
-
-      \vspace{0.4cm}
-      \normalsize
-      \centering
-      \textit{The optimal operating point depends on tolerance for false positives vs.\ false negatives.}
-    \end{column}
-
-    \begin{column}{0.52\textwidth}
-      \textbf{Threshold Table} ($T = 6.00$)
-
-      \vspace{0.1cm}
-
-      \tiny
-      AUROC\,=\,0.7961 \quad AP\,=\,0.8841 \quad FPR@TPR70\,=\,0.2050
-
-      \vspace{0.15cm}
-
-      \footnotesize
-      \renewcommand{\arraystretch}{1.1}
-      \begin{tabular}{@{}c c c c c@{}}
-        \toprule
-        $\tau$ & FPR & FNR & ID Acc & \% ID \\
-        \midrule
-        0.10 & 0.875 & 0.052 & 0.785 & 94.8\% \\
-        0.20 & 0.263 & 0.249 & 0.874 & 75.1\% \\
-        0.30 & 0.105 & 0.481 & 0.942 & 51.9\% \\
-        0.40 & 0.031 & 0.720 & 0.974 & 28.0\% \\
-        0.50 & 0.000 & 0.943 & 0.991 & 5.7\% \\
-        \bottomrule
-      \end{tabular}
-    \end{column}
-  \end{columns}
-\end{frame}
-
 \begin{frame}{OOD Detection -- Diagnostic Visualisations}
   \textbf{Three diagnostic plots} are generated per temperature:
 
@@ -723,30 +672,63 @@ Weighted F1 & 0.7453 & 0.7700 & +0.0248 \\
   \end{columns}
 \end{frame}
 
-% ============================================================================
+\begin{frame}{OOD Detection -- Results \& The FP\,/\,FN Trade-off}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Temperature Comparison}
 
-% ============================================================================
+      \vspace{0.1cm}
 
-\begin{frame}{Results -- OOD Temperature Comparison}
-  \begin{center}
-    \renewcommand{\arraystretch}{1.2}
-    \begin{tabular}{@{}c c c c@{}}
-      \toprule
-      \textbf{Temperature $T$} & \textbf{AUROC} & \textbf{AP} & \textbf{FPR@TPR70} \\
-      \midrule
-      6.00  & 0.7961 & 0.8841 & 0.2050 \\
-      7.00  & 0.7986 & 0.8860 & 0.2000 \\
-      8.00  & 0.8003 & 0.8875 & 0.1970 \\
-      9.00  & 0.8016 & 0.8885 & 0.1930 \\
-      \textbf{10.00} & \textbf{0.8026} & \textbf{0.8893} & \textbf{0.1910} \\
-      \bottomrule
-    \end{tabular}
+      \footnotesize
+      \renewcommand{\arraystretch}{1.2}
+      \begin{tabular}{@{}c c c c@{}}
+        \toprule
+        \textbf{Temp $T$} & \textbf{AUROC} & \textbf{AP} & \textbf{FPR@TPR70} \\
+        \midrule
+        6.00  & 0.7961 & 0.8841 & 0.2050 \\
+        7.00  & 0.7986 & 0.8860 & 0.2000 \\
+        8.00  & 0.8003 & 0.8875 & 0.1970 \\
+        9.00  & 0.8016 & 0.8885 & 0.1930 \\
+        \textbf{10.00} & \textbf{0.8026} & \textbf{0.8893} & \textbf{0.1910} \\
+        \bottomrule
+      \end{tabular}
 
-    \vspace{0.5cm}
+      \vspace{0.3cm}
 
-    Higher temperatures yield modest improvements across all metrics.\\[0.15cm]
-    Best performance at $T = 10$:\; AUROC\,=\,0.8026,\; AP\,=\,0.8893,\; FPR@TPR70\,=\,0.1910
-  \end{center}
+      \normalsize
+      Best at $T = 10$:\; AUROC\,=\,0.8026,\; AP\,=\,0.8893
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{Threshold Table} ($T = 6.00$)
+
+      \vspace{0.1cm}
+
+      \tiny
+      AUROC\,=\,0.7961 \quad AP\,=\,0.8841 \quad FPR@TPR70\,=\,0.2050
+
+      \vspace{0.15cm}
+
+      \scriptsize
+      \renewcommand{\arraystretch}{1.15}
+      \begin{tabular}{@{}c c c c c@{}}
+        \toprule
+        $\tau$ & FPR & FNR & ID Acc & \% ID \\
+        \midrule
+        0.10 & 0.875 & 0.052 & 0.785 & 94.8\% \\
+        0.20 & 0.263 & 0.249 & 0.874 & 75.1\% \\
+        0.30 & 0.105 & 0.481 & 0.942 & 51.9\% \\
+        0.40 & 0.031 & 0.720 & 0.974 & 28.0\% \\
+        0.50 & 0.000 & 0.943 & 0.991 & 5.7\% \\
+        \bottomrule
+      \end{tabular}
+
+      \vspace{0.4cm}
+
+      \normalsize
+      \textit{The optimal operating point depends on tolerance for false positives vs.\ false negatives.}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 % ============================================================================
