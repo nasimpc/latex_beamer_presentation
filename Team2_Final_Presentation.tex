@@ -448,6 +448,169 @@
 \end{frame}
 
 % ============================================================================
+\section{Evaluation on Additional Modern Forum Data}
+% ============================================================================
+
+\begin{frame}{Evaluation on Additional Modern Forum Data}
+\begin{itemize}
+\item Collected a few samples for each class using web scrapers and a few samples manually from subReddits.
+\item Total of \textbf{2,000 samples} were collected (100 samples for each class) and stored in \texttt{collected\_reddit\_data.csv}.
+\item Evaluated the Top-2 model on \texttt{collected\_reddit\_data.csv}.
+\end{itemize}
+
+\vspace{0.3cm}
+
+\textbf{Evaluation Results:}
+\begin{itemize}
+\item Test Loss: \textbf{0.9896}
+\item Accuracy: \textbf{0.7800}
+\end{itemize}
+
+\vspace{0.2cm}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}l c c c@{}}
+\toprule
+\textbf{Metric} & \textbf{Test Set} & \textbf{Reddit} & \textbf{Change} \\
+\midrule
+Accuracy    & 0.7435 & 0.7800 & +0.0365 \\
+Macro F1    & 0.7353 & 0.7700 & +0.0347 \\
+Weighted F1 & 0.7453 & 0.7700 & +0.0248 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{frame}
+
+% ============================================================================
+\section{Key Findings}
+% ============================================================================
+
+\begin{frame}{Key Findings \& Interpretation}
+  \textbf{Test Set vs. Collected Reddit Data}
+
+  \vspace{0.2cm}
+
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{1. Categories with Large Improvements}
+      \begin{itemize}
+        \footnotesize
+        \item \texttt{rec.autos} (+0.293)
+        \item \texttt{talk.politics.misc} (+0.315)
+        \item \texttt{talk.politics.guns} (+0.244)
+        \item \texttt{sci.electronics} (+0.219)
+        \item \texttt{rec.motorcycles} (+0.148)
+        \item \texttt{sci.space} (+0.152)
+        \item \texttt{rec.sport.baseball} (+0.115)
+        \item \texttt{sci.crypt} (+0.100)
+      \end{itemize}
+
+      \vspace{0.2cm}
+      \textbf{2. Categories with Moderate Gains}
+      \begin{itemize}
+        \footnotesize
+        \item \texttt{alt.atheism} (+0.060)
+        \item \texttt{comp.graphics} (+0.049)
+        \item \texttt{comp.sys.mac.hardware} (+0.016)
+        \item \texttt{rec.sport.hockey} (+0.050)
+        \item \texttt{talk.politics.mideast} (+0.034)
+        \item \texttt{sci.med} (+0.086)
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \textbf{3. Categories with Declines}
+      \begin{itemize}
+        \footnotesize
+        \item \texttt{comp.windows.x} (--0.328)
+        \item \texttt{comp.sys.ibm.pc.hardware} (--0.259)
+        \item \texttt{misc.forsale} (--0.230)
+        \item \texttt{soc.religion.christian} (--0.163)
+        \item \texttt{talk.religion.misc} (--0.131)
+        \item \texttt{comp.os.ms-windows.misc} (--0.077)
+      \end{itemize}
+
+      \vspace{0.2cm}
+      \textbf{4. Factors Influencing Performance}
+      \begin{itemize}
+        \footnotesize
+        \item Subreddit relevance
+        \item Temporal language shift
+        \item Community norms
+        \item Class imbalance in original data
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Confidence Analysis}
+% ============================================================================
+
+\begin{frame}{Confidence Score \& Certainty of the Model}
+  \textbf{Maximum Softmax Probability (MSP)}
+
+  \vspace{0.2cm}
+
+  Confidence computed using Softmax:
+  \[
+  P(y=i) = \frac{e^{z_i}}{\sum_{j} e^{z_j}}
+  \]
+
+  \textbf{Confidence score} = Maximum Softmax Probability (MSP)
+
+  \vspace{0.2cm}
+  Evaluated on full test set.
+
+  \vspace{0.4cm}
+
+  \textbf{Results:}
+  \begin{itemize}
+    \item \textbf{Avg Confidence (Correct):} 0.9508
+    \item \textbf{Avg Confidence (Incorrect):} 0.6879
+    \item \textbf{Correlation (Confidence vs Correctness):} 0.5384
+  \end{itemize}
+
+  \vspace{0.2cm}
+  \begin{center}
+    \textit{The model is significantly less confident when it makes a mistake.}
+  \end{center}
+\end{frame}
+
+% ============================================================================
+
+\begin{frame}{Confidence Score \& Certainty of the Model}
+  \textbf{Test-Time Augmentation (TTA) for Uncertainty Estimation}
+
+  \begin{enumerate}
+    \item Apply 10 stochastic augmentations to each test sample
+    \item Run model inference on each augmented version
+    \item Average predicted probability distributions
+    \item Compute predictive entropy from the averaged probabilities
+    \item Compare entropy for correct vs incorrect predictions
+  \end{enumerate}
+
+  \vspace{0.2cm}
+
+  \textbf{Predictive Entropy Formula}
+  \[
+  H(p) = -\sum_{i=1}^{C} p_i \log p_i
+  \]
+  Where $p_i$ = averaged predicted probability for class $i$, and $C$ = number of classes. \\
+  \textit{Higher $H(p)$ $\rightarrow$ higher uncertainty.}
+
+  \vspace{0.3cm}
+
+  \textbf{Results:}
+  \begin{itemize}
+    \item \textbf{Avg entropy (Correct):} 0.1424
+    \item \textbf{Avg entropy (Incorrect):} 0.9232
+    \item \textbf{Difference:} 0.7808
+  \end{itemize}
+\end{frame}
+
+% ============================================================================
 \section{Out-of-Distribution Detection}
 % ============================================================================
 
