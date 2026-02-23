@@ -355,62 +355,18 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}{HPO -- Visualisation and Model Selection}
+\begin{frame}{HPO -- Visualisation and Evaluation}
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
-      \textbf{Optuna Outputs}
-
-      \vspace{0.2cm}
-
-      \begin{itemize}
-        \item \textbf{Slice plots}: validation accuracy vs.\ each hyperparameter
-        \item \textbf{Parameter importance}: which HPs matter most for performance
-      \end{itemize}
-    \end{column}
-
-    \begin{column}{0.48\textwidth}
-      \textbf{Top-3 Model Selection Process}
-
-      \vspace{0.2cm}
-
-      \begin{enumerate}
-        \item All trials completed
-        \item Sort by validation accuracy (desc.)
-        \item Select Top~3
-        \item Evaluate each on held-out \textbf{test set}
-        \item Save best 2 models for deployment
-      \end{enumerate}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-% ============================================================================
-\section{Evaluation: Top-3 Models}
-% ============================================================================
-
-\begin{frame}{Evaluation: Top-3 Models}
-  \begin{columns}[T]
-    \begin{column}{0.44\textwidth}
-      \textbf{Evaluation Metrics}
+      \centering
+      \textbf{Hyperparameters vs. Loss}
 
       \vspace{0.15cm}
 
-      \scriptsize
-      \renewcommand{\arraystretch}{1.15}
-      \begin{tabular}{@{}l L{4.0cm}@{}}
-        \toprule
-        \textbf{Metric} & \textbf{Description} \\
-        \midrule
-        Accuracy        & Correct predictions / total \\
-        Macro Prec.\    & Mean precision across 20 classes \\
-        Macro Recall    & Mean recall across 20 classes \\
-        Macro F1        & Harmonic mean of prec.\ \& recall \\
-        Weighted F1     & F1 weighted by class support \\
-        \bottomrule
-      \end{tabular}
-    \end{column}
+      \includegraphics[width=0.95\textwidth]{qrs_hyperparameters_vs_loss.png}
 
-    \begin{column}{0.52\textwidth}
+      \vspace{0.4cm}
+
       \textbf{Test-Set Performance}
 
       \vspace{0.15cm}
@@ -427,22 +383,15 @@
         Test Loss   & 1.2554  & 1.4491  & 1.6971  \\
         \bottomrule
       \end{tabular}
+    \end{column}
 
-      \vspace{0.25cm}
+    \begin{column}{0.48\textwidth}
+      \centering
+      \textbf{Parameter Importances}
 
-      \normalsize
-      \textbf{Best Hyperparameters (Top-1)}
+      \vspace{0.2cm}
 
-      \vspace{0.10cm}
-
-      \scriptsize
-      \begin{tabular}{@{}l c@{}}
-        \toprule
-        Learning rate & $2.3688 \times 10^{-5}$ \\
-        Weight decay  & 0.0951 \\
-        Warmup ratio  & 0.1463 \\
-        \bottomrule
-      \end{tabular}
+      \includegraphics[width=\textwidth]{qrs_param_importances.png}
     \end{column}
   \end{columns}
 \end{frame}
@@ -570,7 +519,13 @@
 \begin{frame}{OOD Detection -- Diagnostic Visualisations}
   \textbf{Three diagnostic plots} are generated per temperature:
 
-  \vspace{0.3cm}
+  \vspace{0.1cm}
+
+  \begin{center}
+    \includegraphics[width=\textwidth]{ood_detection_T0600.png}
+  \end{center}
+
+  \vspace{0.1cm}
 
   \begin{columns}[T]
     \begin{column}{0.30\textwidth}
@@ -581,7 +536,6 @@
 
       \footnotesize
       \begin{itemize}
-        \item X: FPR, Y: TPR
         \item AUROC summarises discriminative quality
         \item Annotated with FPR@TPR70
       \end{itemize}
@@ -595,7 +549,6 @@
 
       \footnotesize
       \begin{itemize}
-        \item Histogram of MSP scores for ID vs.\ OOD
         \item Good detection $\rightarrow$ well-separated distributions
         \item OOD should cluster at lower confidence
       \end{itemize}
@@ -609,7 +562,6 @@
 
       \footnotesize
       \begin{itemize}
-        \item FPR and FNR vs.\ threshold $\tau$
         \item Crossing point = balanced operating point
         \item Select $\tau$ per application needs
       \end{itemize}
@@ -618,7 +570,7 @@
 \end{frame}
 
 % ============================================================================
-\section{Results}
+
 % ============================================================================
 
 \begin{frame}{Results -- OOD Temperature Comparison}
@@ -641,6 +593,49 @@
     Higher temperatures yield modest improvements across all metrics.\\[0.15cm]
     Best performance at $T = 10$:\; AUROC\,=\,0.8026,\; AP\,=\,0.8893,\; FPR@TPR70\,=\,0.1910
   \end{center}
+\end{frame}
+
+% ============================================================================
+\section{Key Design Decisions}
+% ============================================================================
+
+\begin{frame}{Key Design Decisions}
+  \begin{enumerate}
+    \item \textbf{Used ModernBERT Variant of BERT}
+    \begin{itemize}
+      \item Version of BERT that includes multiple small tweaks to make the transformer architecture more robust and efficient
+    \end{itemize}
+
+    \vspace{0.15cm}
+
+    \item \textbf{Layer Freezing (50\%)}
+    \begin{itemize}
+      \item Faster training, less memory $\rightarrow$ allows larger batch size
+      \item Minimal accuracy loss: lower layers learn general language features
+    \end{itemize}
+
+    \vspace{0.15cm}
+
+    \item \textbf{Initial Hyperparameters from ModernBERT Architecture}
+    \begin{itemize}
+      \item Seeded tuning process with parameters proven effective in original paper
+    \end{itemize}
+
+    \vspace{0.15cm}
+
+    \item \textbf{Quasi-Random Search (QRS) over Grid/Random}
+    \begin{itemize}
+      \item QMC sampling provides \textbf{better coverage} of the search space
+    \end{itemize}
+
+    \vspace{0.15cm}
+
+    \item \textbf{Validation Split from Test Set}
+    \begin{itemize}
+      \item Split test 50/50 $\rightarrow$ separates validation for HPO and final test eval
+      \item Prevents data leakage: HPO decisions never touch the test set
+    \end{itemize}
+  \end{enumerate}
 \end{frame}
 
 % ============================================================================
@@ -673,98 +668,13 @@
   \end{center}
 \end{frame}
 
-% ============================================================================
-\section{Key Design Decisions}
-% ============================================================================
 
-\begin{frame}{Key Design Decisions}
-  \begin{enumerate}
-    \item \textbf{Layer Freezing (50\%)}
-    \begin{itemize}
-      \item Reduces trainable parameters by $\sim$50\,\%
-      \item Faster training, lower memory $\rightarrow$ enables larger batch sizes
-      \item Minimal accuracy loss: lower layers learn general language features
-    \end{itemize}
-
-    \vspace{0.25cm}
-
-    \item \textbf{Quasi-Random Search over Grid/Random}
-    \begin{itemize}
-      \item QMC sampling provides \textbf{better coverage} of the search space
-    \end{itemize}
-
-    \vspace{0.25cm}
-
-    \item \textbf{Validation Split from Test Set}
-    \begin{itemize}
-      \item Original 20~Newsgroups only has train/test
-      \item Split test 50/50 $\rightarrow$ separate validation for HPO and test for final evaluation
-      \item Avoids data leakage: HPO decisions never touch the test set
-    \end{itemize}
-
-    \vspace{0.25cm}
-
-    \item \textbf{Top-2 Model for OOD (not Top-1)}
-    \begin{itemize}
-      \item Top-1 model may overfit to validation $\rightarrow$ biased confidence scores
-      \item Top-2 provides a more robust baseline for OOD analysis
-    \end{itemize}
-  \end{enumerate}
-\end{frame}
 
 % ============================================================================
-\section{Challenges}
+\section{Conclusion}
 % ============================================================================
 
-\begin{frame}{Technical Challenges}
-  \begin{columns}[T]
-    \begin{column}{0.48\textwidth}
-      \textbf{1.\; Memory Management}
-
-      \vspace{0.15cm}
-
-      \begin{itemize}
-        \item Large model $\times$ multiple HPO trials requires aggressive clean-up
-        \item \texttt{gc.collect()}, \texttt{cuda.empty\_cache()}
-        \item Delete non-top-3 checkpoints during search
-      \end{itemize}
-
-      \vspace{0.4cm}
-
-      \textbf{2.\; DataParallel Compatibility}
-
-      \vspace{0.15cm}
-
-      \begin{itemize}
-        \item ModernBERT's compiled attention breaks \texttt{nn.DataParallel}
-        \item Solution: switched to \texttt{eager} attention mode
-      \end{itemize}
-    \end{column}
-
-    \begin{column}{0.48\textwidth}
-      \textbf{3.\; Tokenisation Trade-off}
-
-      \vspace{0.15cm}
-
-      \begin{itemize}
-        \item 256 tokens covers $\sim$75\,\% of documents
-        \item Longer sequences $=$ more memory, diminishing returns
-      \end{itemize}
-
-      \vspace{0.4cm}
-
-      \begin{alertblock}{Lesson Learned}
-        Errors in training pipeline can be very costly when running Optuna Quasi-Random HPO on large transformer models, as each iteration can take hours to run.
-      \end{alertblock}
-    \end{column}
-  \end{columns}
-\end{frame}
-
-% ============================================================================
-\section{Conclusion and Future Work}
-% ============================================================================
-
-\begin{frame}{Conclusion and Future Work}
+\begin{frame}{Conclusion}
   \textbf{Summary}
 
   \vspace{0.2cm}
@@ -778,15 +688,25 @@
 
   \vspace{0.5cm}
 
-  \textbf{Future Work}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \textbf{Future Work}
 
-  \vspace{0.2cm}
+      \vspace{0.2cm}
 
-  \begin{itemize}
-    \item More trials of quasi-random search
-    \item Bayesian HPO
-    \item Experiment with other BERT variants
-  \end{itemize}
+      \begin{itemize}
+        \item More trials of quasi-random search
+        \item Bayesian HPO
+        \item Experiment with other BERT variants
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \begin{alertblock}{Lesson Learned}
+        Errors in training pipeline can be very costly when running Optuna Quasi-Random HPO on large transformer models, as each iteration can take hours to run.
+      \end{alertblock}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 % ============================================================================
