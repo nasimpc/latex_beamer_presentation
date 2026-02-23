@@ -106,6 +106,8 @@
 
   \begin{itemize}
     \item \textbf{Multi-class text classification} on the 20 Newsgroups dataset \\ (20~newsgroup categories)
+    \item \textbf{Collect additional data from modern forums}, evaluate and interpret the key findings
+    \item \textbf{Add a way for the model to generate a confidence score} indicating how certain it is about its decision
     \item \textbf{Open-world extension:} detect inputs that do \emph{not} belong to any of the 20 known categories
   \end{itemize}
 
@@ -781,25 +783,29 @@ Weighted F1 & 0.7453 & 0.7700 & +0.0248 \\
 \begin{frame}{Pipeline Summary}
   \begin{center}
     \begin{tikzpicture}[
-      node distance=0.55cm,
+      node distance=0.3cm,
       box/.style={
         draw=uniblue, fill=lightgray, rounded corners,
-        text width=11cm, minimum height=0.7cm,
-        align=left, font=\small
+        text width=10.5cm, minimum height=0.6cm,
+        align=left, font=\scriptsize
       }
     ]
-      \node[box] (s1) {\textbf{1.}\; Data Loading (20 Newsgroups via HuggingFace) $\rightarrow$ Train\,/\,Validation\,/\,Test split};
-      \node[box, below=of s1] (s2) {\textbf{2.}\; Tokenisation (ModernBERT tokenizer, max\_len\,=\,256)};
-      \node[box, below=of s2] (s3) {\textbf{3.}\; Model Setup (ModernBERT-Large, 50\,\% layers frozen)};
+      \node[box] (s1) {\textbf{1.}\; Data Loading (20 Newsgroups via HuggingFace) $\rightarrow$ Train/Val/Test split};
+      \node[box, below=of s1] (s2) {\textbf{2.}\; Tokenisation (ModernBERT tokenizer, max\_len=256)};
+      \node[box, below=of s2] (s3) {\textbf{3.}\; Model Setup (ModernBERT-Large, 50\% layers frozen)};
       \node[box, below=of s3] (s4) {\textbf{4.}\; Hyperparameter Optimisation $\rightarrow$ Optuna QRS (LR, weight decay, warmup ratio)};
       \node[box, below=of s4] (s5) {\textbf{5.}\; Model Selection (Top~3 $\rightarrow$ evaluate on test set)};
-      \node[box, below=of s5] (s6) {\textbf{6.}\; OOD Detection (MSP + Temperature Scaling)\; $\rightarrow$\; ID: 20\,Newsgroups\;\textbar\; OOD: AG\,News};
+      \node[box, below=of s5] (s6) {\textbf{6.}\; OOD Detection (MSP + Temp. Scaling): ID=20 Newsgroups, OOD=AG News};
+      \node[box, below=of s6] (s7) {\textbf{7.}\; Evaluate on collected Reddit data, compare \& interpret vs test results};
+      \node[box, below=of s7] (s8) {\textbf{8.}\; Confidence score \& certainty of the model (MSP, TTA)};
 
       \draw[-{Stealth[length=3mm]}, thick, uniblue] (s1) -- (s2);
       \draw[-{Stealth[length=3mm]}, thick, uniblue] (s2) -- (s3);
       \draw[-{Stealth[length=3mm]}, thick, uniblue] (s3) -- (s4);
       \draw[-{Stealth[length=3mm]}, thick, uniblue] (s4) -- (s5);
       \draw[-{Stealth[length=3mm]}, thick, uniblue] (s5) -- (s6);
+      \draw[-{Stealth[length=3mm]}, thick, uniblue] (s6) -- (s7);
+      \draw[-{Stealth[length=3mm]}, thick, uniblue] (s7) -- (s8);
     \end{tikzpicture}
   \end{center}
 \end{frame}
