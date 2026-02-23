@@ -781,33 +781,23 @@ Weighted F1 & 0.7453 & 0.7700 & +0.0248 \\
 % ============================================================================
 
 \begin{frame}{Pipeline Summary}
-  \begin{center}
-    \begin{tikzpicture}[
-      node distance=0.3cm,
-      box/.style={
-        draw=uniblue, fill=lightgray, rounded corners,
-        text width=10.5cm, minimum height=0.6cm,
-        align=left, font=\scriptsize
-      }
-    ]
-      \node[box] (s1) {\textbf{1.}\; Data Loading (20 Newsgroups via HuggingFace) $\rightarrow$ Train/Val/Test split};
-      \node[box, below=of s1] (s2) {\textbf{2.}\; Tokenisation (ModernBERT tokenizer, max\_len=256)};
-      \node[box, below=of s2] (s3) {\textbf{3.}\; Model Setup (ModernBERT-Large, 50\% layers frozen)};
-      \node[box, below=of s3] (s4) {\textbf{4.}\; Hyperparameter Optimisation $\rightarrow$ Optuna QRS (LR, weight decay, warmup ratio)};
-      \node[box, below=of s4] (s5) {\textbf{5.}\; Model Selection (Top~3 $\rightarrow$ evaluate on test set)};
-      \node[box, below=of s5] (s6) {\textbf{6.}\; OOD Detection (MSP + Temp. Scaling): ID=20 Newsgroups, OOD=AG News};
-      \node[box, below=of s6] (s7) {\textbf{7.}\; Evaluate on collected Reddit data, compare \& interpret vs test results};
-      \node[box, below=of s7] (s8) {\textbf{8.}\; Confidence score \& certainty of the model (MSP, TTA)};
-
-      \draw[-{Stealth[length=3mm]}, thick, uniblue] (s1) -- (s2);
-      \draw[-{Stealth[length=3mm]}, thick, uniblue] (s2) -- (s3);
-      \draw[-{Stealth[length=3mm]}, thick, uniblue] (s3) -- (s4);
-      \draw[-{Stealth[length=3mm]}, thick, uniblue] (s4) -- (s5);
-      \draw[-{Stealth[length=3mm]}, thick, uniblue] (s5) -- (s6);
-      \draw[-{Stealth[length=3mm]}, thick, uniblue] (s6) -- (s7);
-      \draw[-{Stealth[length=3mm]}, thick, uniblue] (s7) -- (s8);
-    \end{tikzpicture}
-  \end{center}
+  \begin{enumerate}
+    \item \textbf{Data Loading:} 20 Newsgroups via HuggingFace $\rightarrow$ Train/Val/Test split
+    \vspace{0.15cm}
+    \item \textbf{Tokenisation:} ModernBERT tokenizer, max\_len=256
+    \vspace{0.15cm}
+    \item \textbf{Model Setup:} ModernBERT-Large, 50\% layers frozen
+    \vspace{0.15cm}
+    \item \textbf{Hyperparameter Optimisation:} Optuna QRS (LR, weight decay, warmup ratio)
+    \vspace{0.15cm}
+    \item \textbf{Model Selection:} Top~3 $\rightarrow$ evaluate on test set
+    \vspace{0.15cm}
+    \item \textbf{OOD Detection:} MSP + Temp. Scaling: ID=20 Newsgroups, OOD=AG News
+    \vspace{0.15cm}
+    \item \textbf{Real-World Evaluation:} Evaluate on collected Reddit data, compare \& interpret vs test results
+    \vspace{0.15cm}
+    \item \textbf{Uncertainty Estimation:} Confidence score \& certainty of the model (MSP, TTA)
+  \end{enumerate}
 \end{frame}
 
 
@@ -817,18 +807,7 @@ Weighted F1 & 0.7453 & 0.7700 & +0.0248 \\
 % ============================================================================
 
 \begin{frame}{Conclusion}
-  \textbf{Summary}
-
-  \vspace{0.2cm}
-
-  \begin{itemize}
-    \item Successfully fine-tuned \textbf{ModernBERT-Large} on 20~Newsgroups (20-class classification)
-    \item Systematic \textbf{hyperparameter optimisation} with Optuna Quasi-Random Search
-    \item Extended to \textbf{OOD detection} using MSP with temperature scaling
-    \item Comprehensive evaluation with AUROC, AP, FPR@TPR70, and threshold analysis
-  \end{itemize}
-
-  \vspace{0.5cm}
+  
 
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
