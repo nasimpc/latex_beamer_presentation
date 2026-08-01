@@ -5,6 +5,9 @@
         "**/*.blg": true,
         "**/*.fdb_latexmk": true,
         "**/*.fls": true,
+        "**/*.nav": true,
+        "**/*.snm": true,
+        "**/*.toc": true,
         "**/*.log": true,
         "**/*.out": true,
         "**/*.synctex*": true
