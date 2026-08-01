@@ -8,6 +8,7 @@
 % ============================================================================
 \usetheme{Madrid}
 \usecolortheme{whale}
+\useoutertheme[subsection=false]{miniframes}
 
 % Custom colors inspired by German universities (e.g., TU/LMU style)
 \definecolor{uniblue}{RGB}{0, 51, 102}
@@ -24,6 +25,10 @@
 \setbeamercolor{item}{fg=uniblue}
 \setbeamercolor{subitem}{fg=unigray}
 \setbeamercolor{footline}{fg=unigray}
+\setbeamercolor{section in head/foot}{fg=white, bg=uniblue}
+\setbeamercolor{mini frame}{fg=white, bg=uniblue}
+\setbeamerfont{section in head/foot}{size=\scriptsize}
+\setbeamerfont{section title}{size=\LARGE, series=\bfseries}
 
 % Remove navigation symbols
 \setbeamertemplate{navigation symbols}{}
@@ -59,6 +64,7 @@
 \usepackage{array}
 \usepackage{multirow}
 \usepackage{hyperref}
+\usetikzlibrary{shadows}
 
 % Table column types
 \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
@@ -72,6 +78,34 @@
 \author[Team 04 Final Presentation]{Team 04 Final Presentation}
 \institute[Universität Bremen]{Robot Programing with ROS\\Summer Semester 2026}
 \date{Jun 03, 2026}
+
+% Keep a compact label in the top navigation and the full title on dividers.
+\newcommand{\fullsectiontitle}{}
+\newcommand{\presentationsection}[2][]{%
+  \gdef\fullsectiontitle{#2}%
+  \section[#1]{#2}%
+}
+
+% Dedicated title slide for each section, with the navigation bar visible.
+\AtBeginSection[]{
+  \begin{frame}
+    \centering
+    \vfill
+    \begin{tikzpicture}
+      \node[
+        fill=uniblue,
+        text=white,
+        rounded corners=8pt,
+        drop shadow={shadow xshift=1.5mm, shadow yshift=-1.5mm, opacity=0.45},
+        minimum width=0.88\paperwidth,
+        minimum height=1.8cm,
+        inner xsep=8mm,
+        align=center
+      ] {\usebeamerfont{section title}\fullsectiontitle};
+    \end{tikzpicture}
+    \vfill
+  \end{frame}
+}
 
 % ============================================================================
 % DOCUMENT
@@ -89,7 +123,7 @@
 \end{frame}
 
 % ============================================================================
-\section{Navigation}
+\presentationsection[Nav.]{Navigation}
 % ============================================================================
 
 \begin{frame}{Navigation: Main Steps}
@@ -170,7 +204,7 @@
 \end{frame}
 
 \begin{frame}{Next Waypoint Selection}
-  \small
+  \footnotesize
   \begin{columns}[T]
     \begin{column}{0.52\textwidth}
       \begin{block}{1. Locate the Robot on the Path}
@@ -210,7 +244,7 @@
 \end{frame}
 
 % ============================================================================
-\section{Requirements Identified}
+\presentationsection[Req.]{Requirements Identified}
 % ============================================================================
 
 \begin{frame}{Requirements Identified}
@@ -225,10 +259,11 @@
 \end{frame}
 
 % ============================================================================
-\section{Data Overview and Pre-processing}
+\presentationsection[Data]{Data Overview and Pre-processing}
 % ============================================================================
 
 \begin{frame}{Dataset Overview}
+  \footnotesize
   \begin{columns}[T]
     \begin{column}{0.48\textwidth}
       \begin{block}{Dataset Properties}
@@ -286,7 +321,7 @@
 \end{frame}
 
 % ============================================================================
-\section{Performance Metrics and Features}
+\presentationsection[Metrics]{Performance Metrics and Features}
 % ============================================================================
 
 \begin{frame}{Performance Metrics (8 Metrics)}
@@ -330,7 +365,7 @@
 \end{frame}
 
 % ============================================================================
-\section{Anomaly Detection and Classification}
+\presentationsection[Anomalies]{Anomaly Detection and Classification}
 % ============================================================================
 
 \begin{frame}{Anomaly Detection and Classification}
@@ -394,7 +429,7 @@
 
 % ============================================================================
 % ============================================================================
-\section{Correlations Analysis}
+\presentationsection[Correl.]{Correlations Analysis}
 % ============================================================================
 
 \begin{frame}{Anomaly Correlations Analysis}
@@ -414,7 +449,7 @@
 \end{frame}
 
 % ============================================================================
-\section{Early Prediction Insights}
+\presentationsection[Prediction]{Early Prediction Insights}
 % ============================================================================
 
 \begin{frame}{Early Prediction: Predictability}
@@ -471,7 +506,7 @@
 \end{frame}
 
 % ============================================================================
-\section{Causality Analysis Methodology}
+\presentationsection[Causality]{Causality Analysis Methodology}
 % ============================================================================
 
 \begin{frame}{Methodology Evolution}
@@ -530,7 +565,7 @@
 \end{frame}
 
 % ============================================================================
-\section{Insights}
+\presentationsection[Insights]{Insights}
 % ============================================================================
 
 \begin{frame}{Technical Insights (Important)}
@@ -573,7 +608,7 @@
 \end{frame}
 
 % ============================================================================
-\section{Summary}
+\presentationsection[Summary]{Summary}
 % ============================================================================
 
 \begin{frame}{Summary}
