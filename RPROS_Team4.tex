@@ -89,6 +89,127 @@
 \end{frame}
 
 % ============================================================================
+\section{Navigation}
+% ============================================================================
+
+\begin{frame}{Navigation: Main Steps}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Planning}
+        \begin{enumerate}
+          \item \texttt{timer\_callback()} waits until a map, pose, and goal are available.
+          \item Robot and goal positions are converted from metres to map-grid cells.
+          \item A* plans a path using horizontal, vertical, and diagonal moves.
+          \item Obstacles are inflated to maintain clearance, and the grid path is smoothed to reduce zig-zag motion.
+        \end{enumerate}
+      \end{block}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Path Following}
+        \begin{enumerate}
+          \setcounter{enumi}{4}
+          \item Every $0.2\,\mathrm{s}$, a waypoint approximately $0.4\,\mathrm{m}$ ahead is selected.
+          \item A \texttt{TargetVector} pointing toward the waypoint is published.
+          \item When the goal is within $0.4\,\mathrm{m}$, the robot is stopped and \texttt{goal\_succeeded} is reported.
+        \end{enumerate}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A* Path Planning}
+  \begin{columns}[T]
+    \begin{column}{0.55\textwidth}
+      \includegraphics[width=\textwidth,height=0.68\textheight,keepaspectratio]{img/nav.png}
+    \end{column}
+
+    \begin{column}{0.41\textwidth}
+      \begin{block}{Evaluation Function}
+        \begin{equation*}
+          f(n)=g(n)+h(n)
+        \end{equation*}
+        \footnotesize
+        $g(n)$ is the path cost from the start and $h(n)$ estimates the remaining cost to the goal.
+      \end{block}
+
+      \begin{itemize}
+        \item Eight-connected grid search
+        \item Straight-move cost: $1$
+        \item Diagonal-move cost: $\sqrt{2}$
+        \item Corner-cutting is prevented
+        \item Inflated cells add obstacle-clearance cost
+      \end{itemize}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{A* Implementation}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{enumerate}
+        \item \textbf{Initialize:} add the start cell to the open-set priority queue, set $g(\text{start})=0$, and initialize \texttt{came\_from}, \texttt{g\_score}, and the closed set.
+        \item \textbf{Select:} remove the cell with the smallest estimated total cost $f(n)$.
+        \item \textbf{Check the goal:} if selected, reconstruct the path from the stored parent cells.
+        \item \textbf{Mark explored:} skip cells already processed; otherwise add the cell to the closed set.
+      \end{enumerate}
+    \end{column}
+
+    \begin{column}{0.48\textwidth}
+      \begin{enumerate}
+        \setcounter{enumi}{4}
+        \item \textbf{Generate neighbors:} consider all eight adjacent cells using straight and diagonal move costs.
+        \item \textbf{Apply obstacle costs:} reject blocked or invalid cells and penalize inflated cells near obstacles.
+        \item \textbf{Update better paths:} if a lower cost is found, update the neighbor's parent and scores, then add it to the open set.
+        \item \textbf{Finish:} return the reconstructed path, or report \texttt{no\_path} if the open set becomes empty.
+      \end{enumerate}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Next Waypoint Selection}
+  \small
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{block}{1. Locate the Robot on the Path}
+        Project the robot onto every remaining path segment and select the closest point $P$.
+      \end{block}
+
+      \begin{block}{2. Look Ahead Along the Path}
+        Starting at $P$, measure $0.40\,\mathrm{m}$ along the path to obtain waypoint $W$. If the distance crosses a corner, continue on the next segment.
+      \end{block}
+
+      \begin{itemize}
+        \item \texttt{path\_progress} prevents the selected position from jumping backward when the path passes close to itself.
+        \item If less than $0.40\,\mathrm{m}$ remains, return the final goal point.
+      \end{itemize}
+    \end{column}
+
+    \begin{column}{0.44\textwidth}
+      \centering
+      \begin{tikzpicture}[x=0.9cm,y=0.9cm,>=stealth]
+        \draw[very thick,uniblue] (0,3.8) -- (1.4,3.8) -- (2.8,3.8) -- (4.3,3.8);
+        \fill[uniblue] (0,3.8) circle (2pt) node[above] {$A$};
+        \fill[uniblue] (1.4,3.8) circle (2pt) node[above] {$B$};
+        \fill[uniblue] (2.8,3.8) circle (2pt) node[above] {$C$};
+        \fill[uniblue] (4.3,3.8) circle (2pt) node[above] {$D$};
+        \fill[accentred] (2.1,3.8) circle (2.5pt) node[above] {$P$};
+        \node (robot) at (2.1,2.8) {Robot};
+        \draw[->,accentred] (robot) -- (2.1,3.55);
+
+        \draw[very thick,uniblue] (0,1.5) -- (1.4,1.5) -- (2.5,1.5) -- (2.5,2.2) -- (4.1,2.2);
+        \fill[accentred] (1.8,1.5) circle (2.5pt) node[below] {$P$};
+        \fill[accentred] (3.2,2.2) circle (2.5pt) node[above] {$W$};
+        \draw[<->,accentred] (1.8,1.05) -- node[fill=white,inner sep=1pt] {$0.40\,\mathrm{m}$} (3.2,1.05);
+        \node[align=center] at (2.1,0.35) {Look-ahead continues\\across corners};
+      \end{tikzpicture}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% ============================================================================
 \section{Requirements Identified}
 % ============================================================================
 
