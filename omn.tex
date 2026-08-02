@@ -55,6 +55,7 @@
 \usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,shadows}
 \usepackage{xcolor}
 \usepackage{array}
 \usepackage{multirow}
@@ -266,8 +267,6 @@
         \item Eight-connected grid search
         \item Straight-move cost: $1$
         \item Diagonal-move cost: $\sqrt{2}$
-        \item Corner-cutting is prevented
-        \item Inflated cells add obstacle-clearance cost
       \end{itemize}
     \end{column}
   \end{columns}
@@ -450,6 +449,308 @@
 \end{frame}
 
 
+% ----------------------------------------------------------------------------
+% ROBOT MANAGER -- FUNCTIONALITY DEEP DIVE (added slides, native theme style)
+% ----------------------------------------------------------------------------
+
+% --- Divider, matches the \AtBeginSection style used elsewhere ---
+\begin{frame}
+  \vfill
+  \centering
+  \begin{beamercolorbox}[sep=8pt,center,shadow=true,rounded=true]{title}
+    \usebeamerfont{title}Robot Manager -- Functionality Deep Dive\par%
+  \end{beamercolorbox}
+  \vfill
+\end{frame}
+
+% --- 1: Health & Fault Detection ---
+\begin{frame}{Health \& Fault Detection} 
+  \small
+  Every vital system is timed. Silence past a threshold is treated as failure -- automatically.
+  \vspace{0.25cm}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{1 -- LiDAR \texttt{/scan}}
+        \footnotesize
+        \begin{itemize}
+          \item $0\,\mathrm{s}$: healthy
+          \item $1.5\,\mathrm{s}$: \textcolor{orange!80!black}{\textbf{WARN}}
+          \item $4\,\mathrm{s}$: \textcolor{accentred}{\textbf{DOWN}} -- zero speed forced, task cancelled, state $\rightarrow$ FAULT
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{2 -- Localization \texttt{/pose}}
+        \footnotesize
+        \begin{itemize}
+          \item $0\,\mathrm{s}$: healthy
+          \item $3\,\mathrm{s}$: \textcolor{orange!80!black}{\textbf{WARN}}
+          \item $8\,\mathrm{s}$: \textcolor{accentred}{\textbf{DOWN}} -- same recovery as above
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vspace{0.25cm}
+  \begin{block}{Why thresholds instead of instant failure?}
+    \footnotesize
+    A single missed message doesn't mean a sensor is broken -- networks and drivers hiccup. Two thresholds (WARN, then DOWN) give a fair grace window before anything drastic happens, while still guaranteeing a fast, automatic stop once it's truly gone. Healthy again $\rightarrow$ back to INITIALIZING (re-verified).
+  \end{block}
+\end{frame}
+
+% --- 2: Knowing When Mapping Is Actually Done ---
+\begin{frame}{Knowing When Mapping Is Actually Done}
+  \small
+  Confidence must stay above threshold for a sustained hold time -- a single lucky spike doesn't count.
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{center}
+      \begin{tikzpicture}[scale=0.48]
+        \draw[->] (0,0) -- (11,0) node[right] {\scriptsize $t$};
+        \draw[->] (0,0) -- (0,5.2) node[above] {\scriptsize confidence};
+        \draw[dashed,accentred] (0,4.4) -- (10.5,4.4);
+        \node[right,accentred,font=\scriptsize] at (10.5,4.4) {0.97};
+        \draw[very thick,uniblue]
+          (0,3.1) -- (1,3.55) -- (2,4.0) -- (3,4.65) -- (4,4.9) -- (5,4.75)
+          -- (6,4.95) -- (7,4.9) -- (8,4.95) -- (9,4.925) -- (10,4.95);
+        \fill[uniblue] (4,4.9) circle (2pt);
+        \node[uniblue,above,font=\scriptsize] at (4.1,5.05) {crosses 0.97};
+        \draw[<->,accentred] (4,-0.5) -- (6.5,-0.5);
+        \node[fill=white,inner sep=1pt,font=\scriptsize] at (5.25,-0.5) {hold 5s};
+      \end{tikzpicture}
+      \end{center}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{block}{The hold-timer rule}
+        \footnotesize
+        \begin{enumerate}
+          \item Confidence first crosses 0.97 at $\approx 8\,\mathrm{s}$ $\rightarrow$ a hold-timer starts.
+          \item It must stay $\geq 0.97$ continuously for 5 more seconds.
+          \item Only then is the map declared converged and saved.
+        \end{enumerate}
+        If it dips below 0.97 even once, the timer resets -- the wait starts fresh.
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% --- 3: FSM ---
+\begin{frame}{How a Finite State Machine (FSM) Runs the Mission}
+  \footnotesize
+  The robot is always in exactly one state, and a fixed rule table decides every legal transition.
+  \begin{center}
+  \begin{tikzpicture}[
+      state/.style={rectangle,rounded corners,draw=uniblue,thick,fill=lightgray,
+        minimum width=2.0cm,minimum height=0.85cm,align=center,font=\scriptsize},
+      >=Stealth,thick
+    ]
+    \node[state] (boot) {BOOT};
+    \node[state,right=0.7cm of boot] (init) {INITIALIZING};
+    \node[state,right=0.7cm of init] (map) {MAPPING};
+    \node[state,right=0.7cm of map] (ready) {READY};
+    \node[state,right=0.7cm of ready] (exec) {EXECUTING};
+    \node[state,fill=accentred!15,draw=accentred,below=1.1cm of map] (fault) {FAULT};
+    \node[state,fill=accentred!25,draw=accentred,below=1.1cm of ready] (estop) {ESTOPPED};
+
+    \draw[->,uniblue] (boot) -- (init);
+    \draw[->,uniblue] (init) -- (map);
+    \draw[->,uniblue] (map) -- (ready);
+    \draw[->,uniblue] (ready) -- (exec);
+    \draw[->,uniblue] (exec) to[bend left=30] node[above,font=\tiny]{task finishes} (ready);
+
+    \draw[->,accentred] (init.south) -- (fault.north);
+    \draw[->,accentred] (map.south) -- (fault.north);
+    \draw[->,accentred] (ready.south) -- (estop.north);
+    \draw[->,accentred] (exec.south) -- (estop.north);
+  \end{tikzpicture}
+  \end{center}
+  \vspace{-0.15cm}
+  \centering{\tiny \textcolor{accentred}{FAULT / ESTOPPED are reachable from ANY state, instantly.}}\par
+  \vspace{0.15cm}
+  \begin{block}{How it's implemented}
+    \footnotesize
+    A lookup table maps (current state, event) $\rightarrow$ next state. An event that isn't a valid key for the current state is simply ignored -- illegal transitions are structurally impossible, not just unlikely -- and every transition is logged with a timestamp.
+  \end{block}
+\end{frame}
+
+% --- 4: Resolving Conflicts Automatically ---
+\begin{frame}{Resolving Conflicts Automatically -- and How}
+  \small
+  Two programs trying to drive the robot at once is unsafe. Robot Manager decides who wins, asymmetrically.
+  \vspace{0.2cm}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{A -- Starting an autonomous task}
+        \footnotesize
+        \begin{enumerate}
+          \item Operator clicks Explore / Follow
+          \item Manual driving mode is stopped automatically
+          \item New autonomous pipeline starts cleanly
+        \end{enumerate}
+        \textit{Automatic hand-off -- a background convenience process is low-risk to interrupt.}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{B -- Interrupting an active task}
+        \footnotesize
+        \begin{enumerate}
+          \item Operator tries to switch to manual driving
+          \item Request is REJECTED with a clear reason
+          \item Operator must explicitly cancel the task first
+        \end{enumerate}
+        \textit{Deliberately NOT automatic -- silently killing a mission the operator explicitly started would be surprising and risky mid-mission.}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% --- 5: Going Further divider ---
+\begin{frame}
+  \vfill
+  \centering
+  \begin{beamercolorbox}[sep=8pt,center,shadow=true,rounded=true]{title}
+    \usebeamerfont{title}Deep Dive: Simulation Mode\par%
+  \end{beamercolorbox}
+  \vspace{0.5cm}
+  \begin{minipage}{0.75\textwidth}
+    \centering\small
+    A second, self-contained backend that runs the exact same brain against a virtual robot -- built to test what the real robot never safely can.
+  \end{minipage}
+  \vfill
+\end{frame}
+
+% --- 6: Same Brain, Two Different Bodies ---
+\begin{frame}{Same Brain, Two Different Bodies}
+  \footnotesize
+  The decision-making code is never duplicated -- only the world underneath it changes.
+  \begin{center}
+  \begin{tikzpicture}[
+      box/.style={rectangle,rounded corners,draw=uniblue,thick,minimum width=4.3cm,minimum height=1.1cm,align=center,font=\scriptsize},
+      corebox/.style={rectangle,rounded corners,draw=uniblue,fill=uniblue,text=white,thick,minimum width=9.6cm,minimum height=0.7cm,align=center,font=\scriptsize},
+      sub/.style={rectangle,rounded corners,draw=uniblue,fill=lightgray,minimum width=1.9cm,minimum height=0.7cm,align=center,font=\tiny},
+      >=Stealth,thick
+    ]
+    \node[box] (real) at (0,3.6) {\textbf{Real Robot Node}\\driven by real sensors\\(LiDAR, odometry, camera)};
+    \node[box] (sim) at (6.6,3.6) {\textbf{Simulator}\\driven by a virtual robot\\(no ROS, no hardware)};
+
+    \node[corebox] (core) at (3.3,2.0) {\textbf{Shared Core Logic} -- identical code, zero duplication};
+
+    \node[sub] (fsm) at (0.1,0.7) {Lifecycle (FSM)};
+    \node[sub] (health) at (2.2,0.7) {Health Monitor};
+    \node[sub] (task) at (4.3,0.7) {Task Manager};
+    \node[sub] (slam) at (6.4,0.7) {SLAM Metrics};
+
+    \node[corebox] (dash) at (3.3,-0.6) {\textbf{One Web Dashboard} -- state() / map\_payload() / command()};
+
+    \draw[->,uniblue] (real.south) -- ++(0,-0.35) -| (core.north -| real);
+    \draw[->,uniblue] (sim.south) -- ++(0,-0.35) -| (core.north -| sim);
+    \draw[->,uniblue] (core) -- (dash);
+  \end{tikzpicture}
+  \end{center}
+  {\tiny Both backends expose the exact same 3 functions, so the dashboard can't tell -- and doesn't need to know -- whether it's watching a real Tortugabot or a simulated one.}
+\end{frame}
+
+% --- 7: How the Virtual World Is Built ---
+\begin{frame}{How the Virtual World Is Built}
+  \footnotesize
+  Four pieces of physics stand in for the real robot's sensors and drivers.
+  \begin{columns}[T]
+    \begin{column}{0.24\textwidth}
+      \begin{block}{Map Source}
+        \tiny Loads a real, previously-saved map if one exists. If none exists, it generates a synthetic maze arena instead.
+      \end{block}
+    \end{column}
+    \begin{column}{0.24\textwidth}
+      \begin{block}{Virtual Sensing}
+        \tiny A ``reveal radius'' around the simulated robot uncovers the map gradually as it moves.
+      \end{block}
+    \end{column}
+    \begin{column}{0.24\textwidth}
+      \begin{block}{Path Planning}
+        \tiny Its own A* search with obstacle inflation -- a self-contained stand-in for the real navigation planner.
+      \end{block}
+    \end{column}
+    \begin{column}{0.24\textwidth}
+      \begin{block}{Virtual Target}
+        \tiny A red cube that wanders the map, so the follow-cube task can be tested without a camera.
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vspace{0.3cm}
+  \begin{block}{Runs standalone}
+    \footnotesize
+    A background thread ticks the virtual world 10 times a second -- the same update rate the real robot uses -- using only Python's standard library. No ROS, no GPU, no extra installs: it runs on any laptop.
+  \end{block}
+\end{frame}
+
+% --- 8: Fault Injection ---
+\begin{frame}{Fault Injection -- Breaking the Robot on Purpose}
+  \footnotesize
+  The one test a real robot can never safely run: deliberately killing a sensor mid-mission to prove recovery works.
+  \begin{columns}[T]
+    \begin{column}{0.52\textwidth}
+      \begin{enumerate}
+        \footnotesize
+        \item Operator flips a toggle on the dashboard (e.g. ``kill LiDAR'')
+        \item That component's heartbeat is silently withheld -- nothing else in the code path is touched or faked
+        \item Health Monitor ages it past WARN, then DOWN -- the exact same logic used for a real failure
+        \item Lifecycle is driven into FAULT for real -- zero velocity, task cancelled, state forced
+        \item Toggle released $\rightarrow$ heartbeat resumes $\rightarrow$ full recovery, back to INITIALIZING, re-verified from scratch
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.44\textwidth}
+      \begin{block}{Why this proves something real}
+        \footnotesize
+        Nothing about the FAULT state itself is faked. Only the sensor's heartbeat is withheld -- the Health Monitor, the FSM, and the recovery path are the real production code, discovering a real missing signal.
+
+        \vspace{0.15cm}
+        On the physical robot, testing this would mean unplugging a live sensor while it drives. In simulation it's one click, fully repeatable, and safe to run as many times as needed.
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% --- 9: Simulator vs. Real Dashboard ---
+\begin{frame}{Simulator vs.\ Real Dashboard}
+  \small
+  Same product experience, different world underneath -- and new abilities the real robot doesn't have.
+  \vspace{0.2cm}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Identical in both}
+        \footnotesize
+        \begin{itemize}
+          \item \textcolor{green!70!black}{The web dashboard UI, unchanged}
+          \item \textcolor{green!70!black}{State machine and its transition rules}
+          \item \textcolor{green!70!black}{Health thresholds and OK/WARN/DOWN logic}
+          \item \textcolor{green!70!black}{``One task at a time'' task rules}
+          \item \textcolor{green!70!black}{Navigation goal tolerance \& timeout values}
+        \end{itemize}
+      \end{block}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \begin{block}{Different in simulation}
+        \footnotesize
+        \begin{itemize}
+          \item \textcolor{red!90!black}{Data comes from virtual physics, not real sensors}
+          \item \textcolor{red!90!black}{Faults can be deliberately triggered on demand}
+          \item \textcolor{red!90!black}{No lab access or physical robot required at all}
+          \item \textcolor{red!90!black}{Runs anywhere -- stdlib only, zero setup}
+          \item \textcolor{red!90!black}{Generates its own map when none exists yet}
+        \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+  \vspace{0.05cm}
+  {\footnotesize \textbf{Why it matters:} the whole mission logic can be demoed, tested, and hardened for rare or risky scenarios -- safely, repeatably, and without ever touching the physical robot.}
+\end{frame}
+
+% --- 10: Simulation Dashboard (final slide of this section) ---
+\begin{frame}{Simulation Dashboard}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.88\linewidth]{img/robot_manager/simulation_dashboard.png}
+  \end{figure}
+\end{frame}
 
 
 
@@ -470,9 +771,9 @@
         \begin{itemize}
           \item Path from A* gets checked for shortcuts
           \item Line of Sight is used
-          \item starts from first point, checks for 50 cells ahead
-          \item looks at furthest away, moves closer until visible
-          \item repeat for the next point
+          \item Starts from first point, checks for 50 cells ahead
+          \item Looks at furthest away, moves closer until visible
+          \item Repeat for the next point
         \end{itemize}
       \end{block}
     \end{column}
@@ -483,7 +784,7 @@
         \begin{itemize}
           \item \textcolor{green!70!black}{For:} Very smooth path
           \item \textcolor{green!70!black}{For:} Decreased number of waypoints
-          \item \textcolor{green!70!black}{For:} Changable Look-Ahead-Distance
+          \item \textcolor{green!70!black}{For:} Changeable Look-Ahead-Distance
           \item \textcolor{red!90!black}{Against:} High computational Cost
           \item \textcolor{red!90!black}{Against:} Too slow for constant path replanning
           \item Result: Not used
@@ -503,9 +804,9 @@
         \begin{itemize}
           \item Path from A* gets corrected
           \item Multiple passes
-          \item each coordinate gets tied to its origin
-          \item and gets pulled away by: y\_next + y\_prev - 2.0 * y\_curr
-          \item stops automatically after specified passes or little change occuring
+          \item Each coordinate gets tied to its origin
+          \item Gets pulled away by: y\_next + y\_prev - 2.0 * y\_curr
+          \item Stops automatically after specified passes or little change occurring
         \end{itemize}
       \end{block}
     \end{column}
@@ -526,53 +827,16 @@
 \end{frame}
 
 
-
-%\section{Stuck Logic}
-\begin{frame}{Stuck Logic}
-  \vspace{-0.2cm}
-  \begin{block}{Algorithm}
-    \small
-    \begin{itemize}
-      \setlength\itemsep{-0.2em}
-      \item only when in mode "tracking" to avoid timeout while calculating path
-      \item checks weather the robot has moved enough in a specified timeframe
-      \item when stuck, clears the current path and publishes velocities = 0
-      \item when next\_goal in queue, switch over
-    \end{itemize}
-  \end{block}
-  \vspace{-0.3cm}
-  \begin{block}{Toggle Logic}
-    \small
-    \vspace{-0.3cm}
-    \begin{columns}[T]
-      \begin{column}{0.58\textwidth}
-        \vspace{0.1cm}
-        \hspace{2cm}
-        set toggle to false, when:
-        \vspace{-0.2cm}
-        \begin{itemize}
-          \setlength\itemsep{-0.3em}
-          \item goal is reached or new current goal detected
-          \item stuck and there is a next goal
-          \item path is cleared, there is no path or a new path was created
-          \item not ready to plan (no pose, no map or no goal)
-          \item replanning
-        \end{itemize}
-      \end{column}
-      \begin{column}{0.38\textwidth}
-        \vspace{0.1cm}
-        set toggle to true, when:
-        \vspace{-0.2cm}
-        \begin{itemize}
-          \item following a path
-        \end{itemize}
-      \end{column}
-    \end{columns}
-  \end{block}
+\begin{frame}{Theta*}
+  \large
+  Essentially A* with shortcuts:
+  \begin{itemize}
+    \item Performs shortcut checks to find shorter path
+    \item Checks the current parent for visibility of best neighbor
+    \item If successful, skips current node and uses parent as parent of best neighbor
+    \item Repeat
+  \end{itemize}
 \end{frame}
-
-
-
 
 %\section{Theta* vs A*}
 \begin{frame}{Theta* vs A*}
@@ -584,7 +848,7 @@
         \vspace{0.2cm}
         \includegraphics[width=\textwidth,height=0.65\textheight,keepaspectratio]{img/Theta_Path.png}
         Time of Computation: approx. 240 Seconds
-        Noticably smoother path
+        Noticeably smoother path
       \end{center}
     \end{column}
     
@@ -600,8 +864,53 @@
   \end{columns}
   \begin{center}
     \vspace{0.3cm}
-    ==> A* wins due to faster computation
+    ==> A* used due to faster computation
   \end{center}
+\end{frame}
+
+
+%\section{Stuck Logic}
+\begin{frame}{Stuck Logic}
+  \vspace{-0.2cm}
+  \begin{block}{Algorithm}
+    \small
+    \begin{itemize}
+      \setlength\itemsep{-0.2em}
+      \item Only when in mode "tracking" to avoid timeout while calculating path
+      \item Checks weather the robot has moved enough in a specified timeframe
+      \item When stuck, clears the current path and publishes velocities = 0
+      \item When next\_goal in queue, switch over
+    \end{itemize}
+  \end{block}
+  \vspace{-0.3cm}
+  \begin{block}{Toggle Logic}
+    \small
+    \vspace{-0.3cm}
+    \begin{columns}[T]
+      \begin{column}{0.58\textwidth}
+        \vspace{0.1cm}
+        \hspace{2cm}
+        Set toggle to false, when:
+        \vspace{-0.2cm}
+        \begin{itemize}
+          \setlength\itemsep{-0.3em}
+          \item goal is reached or new current goal detected
+          \item stuck and there is a next goal
+          \item path is cleared, there is no path or a new path was created
+          \item not ready to plan (no pose, no map or no goal)
+          \item replanning
+        \end{itemize}
+      \end{column}
+      \begin{column}{0.38\textwidth}
+        \vspace{0.1cm}
+        Set toggle to true, when:
+        \vspace{-0.2cm}
+        \begin{itemize}
+          \item following a path
+        \end{itemize}
+      \end{column}
+    \end{columns}
+  \end{block}
 \end{frame}
 
 % ============================================================
@@ -743,11 +1052,153 @@ Goals are executed sequentially and are no longer discarded.
 % LOCALIZATION (IN SIM)
 % ============================================================================
 \section{Localization (in Sim)}
-\begin{frame}{Localization (in Sim)}
-  \begin{itemize}
-    \item essientially dynamic obstacle avoidance
-  \end{itemize}
+\begin{frame}{Localization Prerequisites}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{block}{The robot knows:}
+          \begin{itemize}
+            \item Odometry (drifts)
+            \item Map
+            \item LaserScan (noisy)
+          \end{itemize}
+          But not its location
+      \end{block}
+    \end{column}
+    
+    \begin{column}{0.5\textwidth}
+      \begin{block}{So we need:}
+          \begin{itemize}
+            \item Initial Pose
+            \item Next Pose based on Odom
+            \item Correct based on LiDAR-Data and Map
+          \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
 \end{frame}
+
+
+\begin{frame}{Localization Logic}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Basic Logic}
+          \begin{itemize}
+            \item Initial Pose is given
+            \item Odom is added to Pose (Covariance grows)
+            \item LaserScan gets matched to map (Covariance declines)\\
+                (Search window only in proximity allowed)
+            \item Pose set to LaserScan pose
+          \end{itemize}
+      \end{block}
+    \end{column}
+    
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Deeper Logic}
+          \begin{itemize}
+            \item Covariance grows more with more movement
+            \item Once Covariance grows too much, global search is started
+            \item Global search is set the the new pose
+          \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+\begin{frame}{LaserScan Matcher Logic}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Basic Logic}
+          \begin{itemize}
+            \item LaserScan converted to 2D coordinates in map
+            \item Score assigned to poses in search window based on likelihood field
+            \item Best score becomes new pose
+          \end{itemize}
+      \end{block}
+    \end{column}
+    
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Deeper Logic}
+          \begin{itemize}
+            \item Three search stages (coarse, medium, fine)
+            \item Each stage gets narrower/smaller
+            \item Score assigned to poses based on:
+              \begin{itemize}
+                  \item closeness to odom estimation
+                  \item closeness to the likelihood field (gaussian distribution)
+              \end{itemize}
+          \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+
+\begin{frame}{Global Search Logic}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Basic Logic}
+          \begin{itemize}
+            \item Takes many random poses in map and scores them
+            \item Best matched score gets set to new pose
+            \item Covariances get set low again
+          \end{itemize}
+      \end{block}
+    \end{column}
+    
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Problems}
+          \begin{itemize}
+            \item Score Logic gets drawn to walls
+            \item Problem with global search
+            \item Closest spot to walls always wins
+          \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+  \begin{block}{Result}
+    Fails almost everytime \\
+    Reason that initial pose has to be given
+  \end{block}
+\end{frame}
+
+
+\begin{frame}{Localization Performance}
+  \begin{columns}[T]
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Performance with initial pose}
+          \begin{itemize}
+            \item Tracks consistently
+            \item Sometimes problems with hard turns
+          \end{itemize}
+      \end{block}
+    \end{column}
+    
+    \begin{column}{0.5\textwidth}
+      \begin{block}{Performance with global search}
+          \begin{itemize}
+            \item First pose almost always wrong
+            \item Does not recover due to proximity scoring
+          \end{itemize}
+      \end{block}
+    \end{column}
+  \end{columns}
+  \begin{block}{Possible Fixes and Future Work}
+    \begin{itemize}
+        \item Switch to particle tracking
+        \item Tweak scoring
+        \item Increase covariance more with turns
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+
+
+
+
+
+
+
 
 
 % ============================================================================

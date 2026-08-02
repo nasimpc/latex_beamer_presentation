@@ -3,18 +3,18 @@
 
 ## Main steps (timer_callback())
 
-*  waits until it has a map, pose, and goal.
-*  converts the robot and goal positions from metres into map grid cells.
+1.  waits until it has a map, pose, and goal.
+2.  converts the robot and goal positions from metres into map grid cells.
 
-* runs A* path planning, allowing horizontal, vertical, and diagonal moves.
+3. runs A* path planning, allowing horizontal, vertical, and diagonal moves.
 
-* keeps clearance from obstacles by inflating them.
-* smooths the grid path to reduce zig-zag motion.
+4. keeps clearance from obstacles by inflating them.
+5. smooths the grid path to reduce zig-zag motion.
 
-* Every 0.2 seconds, it chooses a waypoint about 0.4 m ahead.
+6. Every 0.2 seconds, it chooses a waypoint about 0.4 m ahead.
 
-* publishes a TargetVector toward that waypoint.
-* the goal is within 0.4 m, it sends zero speed and reports goal_succeeded.
+7. publishes a TargetVector toward that waypoint.
+8. the goal is within 0.4 m, it sends zero speed and reports goal_succeeded.
 
 ## A Star 
 
@@ -23,14 +23,14 @@
 f(n)=g(n)+h(n)
 
 
-* Initialize A*: Add the start cell to the open-set priority queue, set (g(start)=0), and initialize came_from, g_score, and closed.
-*  Select the best cell: Remove the cell with the smallest estimated total cost (f(n)) from the open set.
-* Check the goal: If the selected cell is the goal, reconstruct and return the path using the stored parent cells.
-* Mark as explored: Skip the cell if already processed; otherwise, add it to the closed set.
-* Generate neighbors: Consider eight neighboring cells with cost (1) for straight movement and (\sqrt{2}) for diagonal movement while preventing corner-cutting.
-* Apply obstacle costs: Reject blocked or invalid cells and add a cost to inflated cells near obstacles.
-* Update better paths: If reaching a neighbor produces a lower cost, update its parent and scores, then add it to the open set.
-* Finish the search: Return the reconstructed path when the goal is reached, or report no_path if the open set becomes empty.
+1. Initialize A*: Initialize open list(priority queue) and Add the start cell, and initialize came_from, g_score, and closed list(set).
+2.  Select the best cell: Remove the cell with the smallest estimated total cost (f(n)) from the open set.
+3. Check the goal: If the selected cell is the goal, reconstruct and return the path using the stored parent cells.
+4. Mark as explored: Skip the cell if already processed; otherwise, add it to the closed set.
+5. Generate neighbors: Consider eight neighboring cells with cost (1) for straight movement and (\sqrt{2}) for diagonal movement while preventing corner-cutting.
+6. Apply obstacle costs: Reject blocked or invalid cells and add a cost to inflated cells near obstacles.
+7. Update better paths: If reaching a neighbor produces a lower cost, update its parent and scores, then add it to the open set.
+8. Finish the search: Return the reconstructed path when the goal is reached, or report no_path if the open set becomes empty.
 
 ## Next Waypoint
 
