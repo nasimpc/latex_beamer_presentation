@@ -171,6 +171,7 @@ The recorder follows one high-level sequence:
 
 1. **Configuration** defines the ROS topics, output directory, MCAP storage
    preset, and recorder node name.
+**configuration is preparation for the recorder’s lifecycle, rather than a separate lifecycle callback**
 
 2. **Setup** verifies that the destination does not already exist and prepares
    its parent directory. This protects earlier recordings from accidental
@@ -179,12 +180,10 @@ The recorder follows one high-level sequence:
 3. **Create recorder backend** builds the rosbag storage and recording options,
    checks that an MCAP writer is available, and creates the concrete recorder.
 
-4. **Continuous recording** starts topic discovery and message processing before
-   starting the writer. The backend then captures the configured ROS messages
+4. **Continuous recording** The backend then captures the configured ROS messages
    continuously rather than waiting for behavior-tree ticks.
-5. **Status updates** occur whenever RoboKudo ticks the annotator. Each update
-   confirms that recording is active, reports the destination, and returns
-   `Status.SUCCESS`; 
+5. **Status updates** occur whenever behavior-tree ticks the annotator. Each update
+   confirms that recording is active, reports the destination.
 6. **Shutdown and finalization** stops recording before stopping topic discovery
    and spinning, then releases the backend. The
 ordered, idempotent shutdown protects buffered data while allowing both explicit

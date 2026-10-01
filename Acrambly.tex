@@ -43,7 +43,7 @@
 % %% Presentation title
 \title{Acrambly: Perception}
 \subtitle{Mid-term Presentation}
-\author{}
+\author{M. Nasim Palakka Valappil}
 \date{Oct 2 2026}
 \setbeamercolor{title}{bg=uniblue,fg=white}
 
@@ -57,7 +57,9 @@
   \end{beamercolorbox}
   \vspace{0.45cm}
   {\usebeamerfont{subtitle}\insertsubtitle\par}
-  \vspace{0.9cm}
+  \vspace{0.45cm}
+  {\usebeamerfont{author}\insertauthor\par}
+  \vspace{0.45cm}
   {\usebeamerfont{date}\insertdate\par}
   \vfill
 \end{frame}
@@ -155,11 +157,9 @@
   {\scriptsize\color{uniblue}From image and point-cloud preprocessing.}
   \par\smallskip
   \begin{tikzpicture}[node distance=0.55cm]
-    \node[pipeline step] (segmentation) {Query-selected HSV segmentation\\
-      Largest matching image contour\\
+    \node[pipeline step] (segmentation) {Detect one colored cube at a time based on HSV range\\
       {\scriptsize\texttt{ImageClusterExtractor}}};
-    \node[pipeline step, below=of segmentation] (pose) {Corresponding 3D points from depth data\\
-      Bounding-box pose and size estimation\\
+    \node[pipeline step, below=of segmentation] (pose) {Fits an oriented bounding box\\
       {\scriptsize\texttt{ClusterPoseBBAnnotator}}};
     \node[pipeline step, below=of pose] (result) {ROS 2 query result generation\\
       {\scriptsize\texttt{GenerateQueryResult}}};
@@ -169,30 +169,99 @@
 \end{frame}
 
 \begin{frame}{Observed behavior}
-  In the performed demonstrations, this pipeline reliably detected the queried
+  This pipeline reliably detected the queried
   colored cube and returned its bounding-box pose.
 
   \medskip
-  It precisly ditect even the pose of smaller cubes.
+  It precisely detect even the pose of smaller cubes.
 
   \medskip
-  It provided the perception
-  output required by the subsequent CRAM/Coraplex integration.
+  However, it is a coustom solution for the specific task.
 \end{frame}
 
 \section{Storage Red}
 
 % %% Storage Red motivation and comparison
-\begin{frame}{Storage Red: why MCAP?}
+\begin{frame}{Storage Red}
   \begin{itemize}
     \setlength{\itemsep}{0.9cm}
     \item \textbf{Motivation:} On the newer Linux kernel used for this project,
       the original RoboKudo MongoDB recording workflow encountered a
       compatibility problem.
-    \item \textbf{Response:} \texttt{storage\_red.py} is a dedicated RoboKudo
-      analysis engine with a \texttt{McapRecorderAnnotator}. It records the
-      sensor input needed to reproduce a perception run in an MCAP bag.
+    \item \textbf{Response:} A new \texttt{storage\_red} 
+      analysis engine with a \texttt{McapRecorderAnnotator} coustom annotator for recording sensor data without MongoDB.
   \end{itemize}
+\end{frame}
+
+\begin{frame}{Storage Red: recorded topics}
+  \centering
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.45}
+  \begin{tabular}{|>{\raggedright\arraybackslash}p{3.4cm}|>{\raggedright\arraybackslash}p{3.1cm}|}
+    \hline
+    \textbf{Topic source} & \textbf{Recorded information} \\
+    \hline
+    Orbbec depth topic & Depth image \\
+    \hline
+    Orbbec color topic & RGB image \\
+    \hline
+    Orbbec camera-info topic & Camera calibration \\
+    \hline
+    \texttt{/tf\_static} & Static transforms \\
+    \hline
+  \end{tabular}
+\end{frame}
+
+% %% Storage Red recording flow and topics
+\begin{frame}{Storage Red: processing flow}
+  \centering
+  \begin{tikzpicture}[node distance=0.38cm]
+    \node[pipeline step] (initiation) {pipeline init};
+    \node[pipeline step, below=of initiation] (reader) {CollectionReaderAnnotator};
+    \node[pipeline step, below=of reader] (preprocessing) {ImagePreprocessorAnnotator};
+    \node[pipeline step, below=of preprocessing] (recording) {McapRecorderAnnotator};
+    \draw[pipeline arrow] (initiation) -- (reader);
+    \draw[pipeline arrow] (reader) -- (preprocessing);
+    \draw[pipeline arrow] (preprocessing) -- (recording);
+  \end{tikzpicture}
+\end{frame}
+
+
+
+\section{MCAP recorder}
+
+% %% MCAP recorder lifecycle
+\begin{frame}{MCAP recorder: lifecycle (1/2)}
+  \centering
+  \begin{tikzpicture}[node distance=0.4cm]
+    \node[pipeline step] (configuration) {\textbf{Configuration}\\
+      {\footnotesize ROS topics, output directory...}};
+    \node[pipeline step, below=of configuration] (setup) {\textbf{1. Setup}\\
+      {\footnotesize Check destination is new; prepare its parent directory}};
+    \node[pipeline step, below=of setup] (backend) {\textbf{2. Create recorder backend}\\
+      {\footnotesize Build rosbag storage and recording options\\Check for an MCAP writer; create the recorder}};
+    \draw[pipeline arrow] (configuration) -- (setup);
+    \draw[pipeline arrow] (setup) -- (backend);
+  \end{tikzpicture}
+  \par\smallskip
+  {\scriptsize\color{uniblue}Continues with continuous recording.}
+\end{frame}
+
+\begin{frame}{MCAP recorder: lifecycle (2/2)}
+  \centering
+  {\scriptsize\color{uniblue}From recorder backend creation.}
+  \par\smallskip
+  \begin{tikzpicture}[node distance=0.4cm]
+    \node[pipeline step] (recording) {\textbf{3. Continuous recording}\\
+      {}};
+    \node[pipeline step, below=of recording] (status) {\textbf{4. Status updates}\\
+      {}};
+    \node[pipeline step, below=of status] (shutdown) {\textbf{5. Shutdown and finalization}\\
+      {}};
+    \draw[pipeline arrow] (recording) -- (status);
+    \draw[pipeline arrow] (status) -- (shutdown);
+  \end{tikzpicture}
 \end{frame}
 
 \begin{frame}{Storage Red: previous and current recording}
@@ -217,81 +286,12 @@
   \end{tabular}
 \end{frame}
 
-% %% Storage Red recording flow and topics
-\begin{frame}{Storage Red: processing flow}
-  \centering
-  \begin{tikzpicture}[node distance=0.38cm]
-    \node[pipeline step] (initiation) {pipeline initialization};
-    \node[pipeline step, below=of initiation] (reader) {Orbbec RGB-D collection reader};
-    \node[pipeline step, below=of reader] (preprocessing) {image and point-cloud preprocessing};
-    \node[pipeline step, below=of preprocessing] (recording) {direct recording of configured ROS topics to MCAP};
-    \draw[pipeline arrow] (initiation) -- (reader);
-    \draw[pipeline arrow] (reader) -- (preprocessing);
-    \draw[pipeline arrow] (preprocessing) -- (recording);
-  \end{tikzpicture}
-\end{frame}
-
-\begin{frame}{Storage Red: recorded topics}
-  \centering
-  \footnotesize
-  \setlength{\tabcolsep}{4pt}
-  \renewcommand{\arraystretch}{1.45}
-  \begin{tabular}{|>{\raggedright\arraybackslash}p{3.4cm}|>{\raggedright\arraybackslash}p{3.1cm}|>{\raggedright\arraybackslash}p{6.2cm}|}
-    \hline
-    \textbf{Topic source} & \textbf{Recorded information} & \textbf{Purpose during replay} \\
-    \hline
-    Orbbec depth topic & Depth image & Reconstruct three-dimensional scene data \\
-    \hline
-    Orbbec color topic & RGB image & Run color-based image processing \\
-    \hline
-    Orbbec camera-info topic & Camera calibration & Interpret and project image measurements \\
-    \hline
-    \texttt{/tf\_static} & Static transforms & Recover fixed sensor-frame relationships \\
-    \hline
-  \end{tabular}
-\end{frame}
-
-\section{MCAP recorder}
-
-% %% MCAP recorder lifecycle
-\begin{frame}{MCAP recorder: lifecycle (1/2)}
-  \centering
-  \begin{tikzpicture}[node distance=0.4cm]
-    \node[pipeline step] (configuration) {\textbf{1. Configuration}\\
-      {\footnotesize ROS topics, output directory, MCAP storage preset,\\recorder node name}};
-    \node[pipeline step, below=of configuration] (setup) {\textbf{2. Setup}\\
-      {\footnotesize Check destination is new; prepare its parent directory\\Protect earlier recordings from overwrite}};
-    \node[pipeline step, below=of setup] (backend) {\textbf{3. Create recorder backend}\\
-      {\footnotesize Build rosbag storage and recording options\\Check for an MCAP writer; create the recorder}};
-    \draw[pipeline arrow] (configuration) -- (setup);
-    \draw[pipeline arrow] (setup) -- (backend);
-  \end{tikzpicture}
-  \par\smallskip
-  {\scriptsize\color{uniblue}Continues with continuous recording.}
-\end{frame}
-
-\begin{frame}{MCAP recorder: lifecycle (2/2)}
-  \centering
-  {\scriptsize\color{uniblue}From recorder backend creation.}
-  \par\smallskip
-  \begin{tikzpicture}[node distance=0.4cm]
-    \node[pipeline step] (recording) {\textbf{4. Continuous recording}\\
-      {\footnotesize Start topic discovery and message processing before the writer\\Capture ROS messages continuously, not only on behavior-tree ticks}};
-    \node[pipeline step, below=of recording] (status) {\textbf{5. Status updates}\\
-      {\footnotesize Each RoboKudo tick: confirm active and report destination\\Return \texttt{Status.SUCCESS}}};
-    \node[pipeline step, below=of status] (shutdown) {\textbf{6. Shutdown and finalization}\\
-      {\footnotesize Stop recording before topic discovery and spinning\\Release the backend}};
-    \draw[pipeline arrow] (recording) -- (status);
-    \draw[pipeline arrow] (status) -- (shutdown);
-  \end{tikzpicture}
-\end{frame}
-
 \begin{frame}{MCAP recorder: observed behavior}
   \begin{itemize}
     \setlength{\itemsep}{0.55cm}
     \item The analysis engine recorded the configured sensor stream to an MCAP bag.
     \item The data was replayed successfully.
-    \item Many later experimantations was done using the data stored next cloud using storage red.
+    \item Many later experimantations was done using the data stored in next cloud with storage red.
   \end{itemize}
 
   \bigskip
@@ -319,18 +319,27 @@
   {\scriptsize\color{uniblue}Block-stacking integration without SemDtSync.}
 \end{frame}
 
-\begin{frame}{CRAM and RoboKudo: query behavior}
+\begin{frame}{CRAM and RoboKudo integration V1}
   \begin{itemize}
     \setlength{\itemsep}{0.5cm}
     \item \textbf{White pipeline:} Estimates all block poses at the same time in
       one perception pipeline run.
     \item \textbf{Blue pipeline:} Each ROS action goal requests object type
-      \texttt{block} and one requested color. Found colors are retained; missing
-      colors are queried again using a fresh perception result, up to the
-      attempt limit.
+      \texttt{block} and one requested color. Found color blocks are retained; missing
+      colors are queried again.
     \item \textbf{Action-future handling:} The query works with a standalone ROS
       node and with a node already managed by an executor.
   \end{itemize}
+\end{frame}
+
+% %% Closing slide
+\begin{frame}{\strut}
+  \centering
+  \vfill
+  {\Huge\color{uniblue}\textbf{Thank You}\par}
+  \vspace{0.7cm}
+  {\Large\color{uniblue}Questions?\par}
+  \vfill
 \end{frame}
 
 \end{document}
