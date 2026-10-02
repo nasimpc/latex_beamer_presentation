@@ -236,9 +236,9 @@
   \centering
   \begin{tikzpicture}[node distance=0.4cm]
     \node[pipeline step] (configuration) {\textbf{Configuration}\\
-      {\footnotesize ROS topics, output directory...}};
+      {}};
     \node[pipeline step, below=of configuration] (setup) {\textbf{1. Setup}\\
-      {\footnotesize Check destination is new; prepare its parent directory}};
+      {}};
     \node[pipeline step, below=of setup] (backend) {\textbf{2. Create recorder backend}\\
       {\footnotesize Build rosbag storage and recording options\\Check for an MCAP writer; create the recorder}};
     \draw[pipeline arrow] (configuration) -- (setup);
@@ -271,17 +271,15 @@
   \renewcommand{\arraystretch}{1.4}
   \begin{tabular}{|>{\raggedright\arraybackslash}p{2.4cm}|>{\raggedright\arraybackslash}p{4.8cm}|>{\raggedright\arraybackslash}p{5.5cm}|}
     \hline
-    \textbf{Aspect} & \textbf{Previous: \texttt{storage.py}} & \textbf{New: \texttt{storage\_red.py}} \\
+    \textbf{Aspect} & \textbf{Storage analysis engine} & \textbf{Storage red analysis engine} \\
+    \hline
+    Recording behavior & Writes the current CAS when the pipeline ticks & Records subscribed ROS topics continuously while the pipeline runs \\
     \hline
     Storage backend & MongoDB through \texttt{StorageWriter} & ROS 2 rosbag2 with MCAP through \texttt{McapRecorderAnnotator} \\
     \hline
     Data saved & Processed CAS data, views, and world model state & Original RGB-D, camera-info, and transform ROS messages \\
     \hline
-    Recording behavior & Writes the current CAS when the pipeline ticks & Records subscribed ROS topics continuously while the pipeline runs \\
-    \hline
     Replay input & MongoDB records read back into a CAS & MCAP bag replayed as sensor topics \\
-    \hline
-    Advantage in the notes & More compressed & Easier implementation \\
     \hline
   \end{tabular}
 \end{frame}
@@ -327,7 +325,7 @@
     \item \textbf{Blue pipeline:} Each ROS action goal requests object type
       \texttt{block} and one requested color. Found color blocks are retained; missing
       colors are queried again.
-    \item \textbf{Action-future handling:} The query works with a standalone ROS
+    \item \textbf{} The query works with a standalone ROS
       node and with a node already managed by an executor.
   \end{itemize}
 \end{frame}
